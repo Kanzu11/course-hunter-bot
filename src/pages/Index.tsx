@@ -296,7 +296,7 @@ Thank you for your purchase!
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Udemy Course Hunter
+            CourseHunter
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Find your next learning adventure at an affordable price
@@ -334,7 +334,7 @@ Thank you for your purchase!
               ) : (
                 <div className="col-span-3 text-center py-10">
                   <h3 className="text-xl font-medium text-gray-700">
-                    {loading ? 'Searching courses...' : 'Search for Udemy courses'}
+                    {loading ? 'Searching courses...' : 'Search for courses'}
                   </h3>
                   <p className="text-gray-500 mt-2">
                     Enter a search term to find courses

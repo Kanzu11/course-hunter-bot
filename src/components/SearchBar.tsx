@@ -33,7 +33,7 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
       <div className="relative">
         <Input
           type="text"
-          placeholder="Search for Udemy courses..."
+          placeholder="Search for courses..."
           className="w-full pl-12 pr-4 py-3 rounded-lg bg-white shadow-sm border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
