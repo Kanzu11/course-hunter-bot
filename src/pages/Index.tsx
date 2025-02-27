@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import SearchBar from '@/components/SearchBar';
 import CourseCard from '@/components/CourseCard';
 import LoadingCard from '@/components/LoadingCard';
+import { useToast } from '@/hooks/use-toast';
 
 // Temporary mock data
 const mockCourses = [
@@ -29,6 +30,8 @@ const mockCourses = [
 const Index = () => {
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState(mockCourses);
+  const [purchaseLoading, setPurchaseLoading] = useState<number | null>(null);
+  const { toast } = useToast();
 
   const handleSearch = (query: string) => {
     setLoading(true);
@@ -43,9 +46,64 @@ const Index = () => {
     }, 500);
   };
 
-  const handlePurchase = (courseId: number) => {
-    // This will be implemented in the next iteration
-    console.log('Purchase initiated for course:', courseId);
+  const handlePurchase = async (courseId: number) => {
+    try {
+      setPurchaseLoading(courseId);
+      
+      // Find the course
+      const course = mockCourses.find(c => c.id === courseId);
+      if (!course) {
+        throw new Error('Course not found');
+      }
+      
+      // Send notification to Telegram channel using the bot
+      const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
+      const channelId = '@udemmmmp'; // Channel username
+      
+      // Create order message
+      const orderMessage = `
+🛒 *NEW COURSE ORDER*
+      
+📚 *Course:* ${course.title}
+💰 *Price:* 300 ETB
+⏰ *Order Time:* ${new Date().toLocaleString()}
+      
+Order is waiting for processing.
+      `;
+      
+      // Encode message for URL
+      const encodedMessage = encodeURIComponent(orderMessage);
+      
+      // Send to Telegram
+      const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${channelId}&text=${encodedMessage}&parse_mode=Markdown`;
+      
+      const response = await fetch(telegramUrl);
+      const data = await response.json();
+      
+      if (!data.ok) {
+        throw new Error('Failed to send notification to Telegram');
+      }
+      
+      // Show success message
+      toast({
+        title: "Order Placed Successfully!",
+        description: `Your order for "${course.title}" has been placed. We'll send you the course details soon.`,
+        variant: "default",
+      });
+      
+      console.log('Purchase completed for course:', courseId);
+      console.log('Notification sent to Telegram channel');
+      
+    } catch (error) {
+      console.error('Purchase error:', error);
+      toast({
+        title: "Order Failed",
+        description: "There was an error processing your order. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPurchaseLoading(null);
+    }
   };
 
   return (
@@ -77,6 +135,7 @@ const Index = () => {
                 description={course.description}
                 thumbnail={course.thumbnail}
                 onPurchase={() => handlePurchase(course.id)}
+                isLoading={purchaseLoading === course.id}
               />
             ))
           )}
