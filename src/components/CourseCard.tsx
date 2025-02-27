@@ -8,9 +8,10 @@ interface CourseProps {
   description: string;
   thumbnail: string;
   onPurchase: () => void;
+  isLoading?: boolean;
 }
 
-const CourseCard = ({ title, description, thumbnail, onPurchase }: CourseProps) => {
+const CourseCard = ({ title, description, thumbnail, onPurchase, isLoading = false }: CourseProps) => {
   return (
     <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg">
       <div className="aspect-video relative overflow-hidden bg-gray-100">
@@ -28,9 +29,10 @@ const CourseCard = ({ title, description, thumbnail, onPurchase }: CourseProps) 
           <span className="text-lg font-bold text-primary">300 ETB</span>
           <Button
             onClick={onPurchase}
+            disabled={isLoading}
             className="bg-primary hover:bg-primary/90 text-white transition-colors duration-200"
           >
-            Buy Now
+            {isLoading ? 'Processing...' : 'Buy Now'}
           </Button>
         </div>
       </div>

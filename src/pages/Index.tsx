@@ -5,7 +5,7 @@ import CourseCard from '@/components/CourseCard';
 import LoadingCard from '@/components/LoadingCard';
 import { useToast } from '@/hooks/use-toast';
 
-// Temporary mock data
+// Expanded mock data to demonstrate better search
 const mockCourses = [
   {
     id: 1,
@@ -25,6 +25,24 @@ const mockCourses = [
     description: "Master digital marketing strategies, SEO, social media marketing, and content creation for business growth.",
     thumbnail: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=450&fit=crop",
   },
+  {
+    id: 4,
+    title: "Web Design for Beginners",
+    description: "Learn UI/UX principles and web design fundamentals. Create beautiful, responsive websites with HTML and CSS.",
+    thumbnail: "https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=800&h=450&fit=crop",
+  },
+  {
+    id: 5,
+    title: "JavaScript Advanced Concepts",
+    description: "Deep dive into JavaScript. Learn closures, prototypes, async/await, and other advanced JavaScript patterns.",
+    thumbnail: "https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=800&h=450&fit=crop",
+  },
+  {
+    id: 6,
+    title: "Social Media Marketing Masterclass",
+    description: "Learn how to grow your business using Facebook, Instagram, Twitter, and TikTok marketing strategies.",
+    thumbnail: "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=800&h=450&fit=crop",
+  },
 ];
 
 const Index = () => {
@@ -33,15 +51,59 @@ const Index = () => {
   const [purchaseLoading, setPurchaseLoading] = useState<number | null>(null);
   const { toast } = useToast();
 
+  // Enhanced search function that finds partial matches and similar courses
   const handleSearch = (query: string) => {
     setLoading(true);
+    
     // Simulate API call
     setTimeout(() => {
-      const filtered = mockCourses.filter(course => 
-        course.title.toLowerCase().includes(query.toLowerCase()) ||
-        course.description.toLowerCase().includes(query.toLowerCase())
-      );
-      setCourses(filtered);
+      if (!query.trim()) {
+        setCourses(mockCourses);
+        setLoading(false);
+        return;
+      }
+      
+      const queryWords = query.toLowerCase().split(/\s+/);
+      
+      // Calculate relevance score for each course
+      const scoredCourses = mockCourses.map(course => {
+        const titleLower = course.title.toLowerCase();
+        const descLower = course.description.toLowerCase();
+        
+        // Calculate match score (higher is better)
+        let score = 0;
+        
+        // Check for exact matches first (highest priority)
+        if (titleLower.includes(query.toLowerCase())) {
+          score += 10;
+        }
+        
+        if (descLower.includes(query.toLowerCase())) {
+          score += 5;
+        }
+        
+        // Check for partial matches with individual words
+        queryWords.forEach(word => {
+          if (word.length > 2) { // Only consider words with 3+ characters
+            if (titleLower.includes(word)) {
+              score += 3;
+            }
+            if (descLower.includes(word)) {
+              score += 1;
+            }
+          }
+        });
+        
+        return { course, score };
+      });
+      
+      // Filter courses with any relevance and sort by score
+      const filteredCourses = scoredCourses
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(item => item.course);
+      
+      setCourses(filteredCourses.length ? filteredCourses : mockCourses);
       setLoading(false);
     }, 500);
   };
@@ -57,19 +119,20 @@ const Index = () => {
       }
       
       // Send notification to Telegram channel using the bot
+      // Make sure the bot is added to the channel as an admin with post messages permission
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
-      const channelId = '@udemmmmp'; // Channel username
+      const channelId = '@udemmmmp'; // Channel username with @ symbol
       
       // Create order message
       const orderMessage = `
 🛒 *NEW COURSE ORDER*
-      
+
 📚 *Course:* ${course.title}
 💰 *Price:* 300 ETB
 ⏰ *Order Time:* ${new Date().toLocaleString()}
-      
+
 Order is waiting for processing.
-      `;
+`;
       
       // Encode message for URL
       const encodedMessage = encodeURIComponent(orderMessage);
@@ -81,7 +144,7 @@ Order is waiting for processing.
       const data = await response.json();
       
       if (!data.ok) {
-        throw new Error('Failed to send notification to Telegram');
+        throw new Error(`Failed to send notification to Telegram: ${JSON.stringify(data)}`);
       }
       
       // Show success message
@@ -93,6 +156,7 @@ Order is waiting for processing.
       
       console.log('Purchase completed for course:', courseId);
       console.log('Notification sent to Telegram channel');
+      console.log('Telegram API response:', data);
       
     } catch (error) {
       console.error('Purchase error:', error);
@@ -127,7 +191,7 @@ Order is waiting for processing.
             Array(3).fill(0).map((_, index) => (
               <LoadingCard key={index} />
             ))
-          ) : (
+          ) : courses.length > 0 ? (
             courses.map((course) => (
               <CourseCard
                 key={course.id}
@@ -138,6 +202,11 @@ Order is waiting for processing.
                 isLoading={purchaseLoading === course.id}
               />
             ))
+          ) : (
+            <div className="col-span-3 text-center py-10">
+              <h3 className="text-xl font-medium text-gray-700">No courses found</h3>
+              <p className="text-gray-500 mt-2">Try a different search term</p>
+            </div>
           )}
         </div>
       </div>
