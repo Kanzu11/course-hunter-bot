@@ -1,125 +1,134 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchBar from '@/components/SearchBar';
 import CourseCard from '@/components/CourseCard';
 import LoadingCard from '@/components/LoadingCard';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
-// Expanded mock data to demonstrate better search
-const mockCourses = [
-  {
-    id: 1,
-    title: "Complete Web Development Bootcamp",
-    description: "Learn web development from scratch. Master HTML, CSS, JavaScript, React and Node.js with practical projects.",
-    thumbnail: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&h=450&fit=crop",
-  },
-  {
-    id: 2,
-    title: "Python Programming Masterclass",
-    description: "Comprehensive Python programming course covering basics to advanced concepts, data science, and machine learning.",
-    thumbnail: "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=800&h=450&fit=crop",
-  },
-  {
-    id: 3,
-    title: "Digital Marketing Essential Training",
-    description: "Master digital marketing strategies, SEO, social media marketing, and content creation for business growth.",
-    thumbnail: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&h=450&fit=crop",
-  },
-  {
-    id: 4,
-    title: "Web Design for Beginners",
-    description: "Learn UI/UX principles and web design fundamentals. Create beautiful, responsive websites with HTML and CSS.",
-    thumbnail: "https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=800&h=450&fit=crop",
-  },
-  {
-    id: 5,
-    title: "JavaScript Advanced Concepts",
-    description: "Deep dive into JavaScript. Learn closures, prototypes, async/await, and other advanced JavaScript patterns.",
-    thumbnail: "https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=800&h=450&fit=crop",
-  },
-  {
-    id: 6,
-    title: "Social Media Marketing Masterclass",
-    description: "Learn how to grow your business using Facebook, Instagram, Twitter, and TikTok marketing strategies.",
-    thumbnail: "https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?w=800&h=450&fit=crop",
-  },
-];
+// Type for Udemy courses
+interface UdemyCourse {
+  id: number;
+  title: string;
+  url: string;
+  description: string;
+  image_480x270: string;
+  price: string;
+  price_detail: {
+    amount: number;
+    currency: string;
+  };
+}
+
+// Type for orders
+interface Order {
+  id: string;
+  courseId: number;
+  courseTitle: string;
+  orderDate: string;
+  status: 'pending' | 'completed';
+}
 
 const Index = () => {
   const [loading, setLoading] = useState(false);
-  const [courses, setCourses] = useState(mockCourses);
+  const [courses, setCourses] = useState<UdemyCourse[]>([]);
   const [purchaseLoading, setPurchaseLoading] = useState<number | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [courseLink, setCourseLink] = useState('');
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Enhanced search function that finds partial matches and similar courses
-  const handleSearch = (query: string) => {
+  // Check for admin status in localStorage on initial load
+  useEffect(() => {
+    const storedIsAdmin = localStorage.getItem('isAdmin');
+    if (storedIsAdmin === 'true') {
+      setIsAdmin(true);
+      // Load orders from localStorage
+      const storedOrders = localStorage.getItem('orders');
+      if (storedOrders) {
+        setOrders(JSON.parse(storedOrders));
+      }
+    }
+  }, []);
+
+  // Function to search courses directly from Udemy
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      setCourses([]);
+      return;
+    }
+
     setLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      if (!query.trim()) {
-        setCourses(mockCourses);
-        setLoading(false);
-        return;
+    try {
+      // Use a proxy server to avoid CORS issues with the Udemy API
+      // In a real production app, you'd implement a backend service to handle this
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(
+        `https://www.udemy.com/api-2.0/courses/?search=${encodeURIComponent(query)}&page=1&page_size=12&fields[course]=@default,price,price_detail,image_480x270`
+      )}`;
+
+      const response = await fetch(proxyUrl);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch courses from Udemy');
       }
       
-      const queryWords = query.toLowerCase().split(/\s+/);
+      const data = await response.json();
+      console.log('Udemy API response:', data);
       
-      // Calculate relevance score for each course
-      const scoredCourses = mockCourses.map(course => {
-        const titleLower = course.title.toLowerCase();
-        const descLower = course.description.toLowerCase();
-        
-        // Calculate match score (higher is better)
-        let score = 0;
-        
-        // Check for exact matches first (highest priority)
-        if (titleLower.includes(query.toLowerCase())) {
-          score += 10;
-        }
-        
-        if (descLower.includes(query.toLowerCase())) {
-          score += 5;
-        }
-        
-        // Check for partial matches with individual words
-        queryWords.forEach(word => {
-          if (word.length > 2) { // Only consider words with 3+ characters
-            if (titleLower.includes(word)) {
-              score += 3;
-            }
-            if (descLower.includes(word)) {
-              score += 1;
-            }
-          }
-        });
-        
-        return { course, score };
+      // Map the Udemy response to our course format
+      setCourses(data.results || []);
+    } catch (error) {
+      console.error('Error fetching Udemy courses:', error);
+      toast({
+        title: "Search Error",
+        description: "Failed to fetch courses from Udemy. Please try again.",
+        variant: "destructive",
       });
-      
-      // Filter courses with any relevance and sort by score
-      const filteredCourses = scoredCourses
-        .filter(item => item.score > 0)
-        .sort((a, b) => b.score - a.score)
-        .map(item => item.course);
-      
-      setCourses(filteredCourses.length ? filteredCourses : mockCourses);
+      setCourses([]);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
+  // Handle purchase process
   const handlePurchase = async (courseId: number) => {
     try {
       setPurchaseLoading(courseId);
       
       // Find the course
-      const course = mockCourses.find(c => c.id === courseId);
+      const course = courses.find(c => c.id === courseId);
       if (!course) {
         throw new Error('Course not found');
       }
       
+      // Create a unique order ID
+      const orderId = `ORDER-${Date.now()}`;
+      
+      // Create a new order
+      const newOrder: Order = {
+        id: orderId,
+        courseId: course.id,
+        courseTitle: course.title,
+        orderDate: new Date().toLocaleString(),
+        status: 'pending'
+      };
+      
+      // Save order to localStorage
+      const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
+      const updatedOrders = [...existingOrders, newOrder];
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      
+      // Update state if in admin mode
+      if (isAdmin) {
+        setOrders(updatedOrders);
+      }
+      
       // Send notification to Telegram channel using the bot
-      // Make sure the bot is added to the channel as an admin with post messages permission
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
       const channelId = '@udemmmmp'; // Channel username with @ symbol
       
@@ -128,6 +137,7 @@ const Index = () => {
 🛒 *NEW COURSE ORDER*
 
 📚 *Course:* ${course.title}
+🆔 *Order ID:* ${orderId}
 💰 *Price:* 300 ETB
 ⏰ *Order Time:* ${new Date().toLocaleString()}
 
@@ -144,6 +154,7 @@ Order is waiting for processing.
       const data = await response.json();
       
       if (!data.ok) {
+        console.error('Telegram API error:', data);
         throw new Error(`Failed to send notification to Telegram: ${JSON.stringify(data)}`);
       }
       
@@ -170,10 +181,120 @@ Order is waiting for processing.
     }
   };
 
+  // Admin login handler
+  const handleAdminLogin = () => {
+    // In a real app, you would validate this on a secure backend
+    // Here we're using a simple password check for demonstration
+    if (adminPassword === 'admin123') { // Replace with your secure password
+      setIsAdmin(true);
+      localStorage.setItem('isAdmin', 'true');
+      
+      // Load orders from localStorage
+      const storedOrders = localStorage.getItem('orders');
+      if (storedOrders) {
+        setOrders(JSON.parse(storedOrders));
+      }
+      
+      toast({
+        title: "Admin Login Successful",
+        description: "You now have access to the admin panel.",
+        variant: "default",
+      });
+    } else {
+      toast({
+        title: "Admin Login Failed",
+        description: "Incorrect password. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Admin logout handler
+  const handleAdminLogout = () => {
+    setIsAdmin(false);
+    localStorage.removeItem('isAdmin');
+    toast({
+      title: "Admin Logout",
+      description: "You have been logged out of the admin panel.",
+      variant: "default",
+    });
+  };
+
+  // Send course link via Telegram bot
+  const handleSendCourseLink = async () => {
+    if (!selectedOrderId || !courseLink.trim()) {
+      toast({
+        title: "Error",
+        description: "Please select an order and enter a course link",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const order = orders.find(o => o.id === selectedOrderId);
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      // Create a direct message to the user
+      // Note: In a real app, you'd store the user's chat ID during order placement
+      // For this demo, we're just sending to the channel
+      const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
+      const channelId = '@udemmmmp'; // Channel username with @ symbol
+      
+      const message = `
+✅ *COURSE DELIVERY*
+
+🆔 *Order ID:* ${order.id}
+📚 *Course:* ${order.courseTitle}
+🔗 *Download Link:* ${courseLink}
+
+Thank you for your purchase!
+`;
+      
+      const encodedMessage = encodeURIComponent(message);
+      const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${channelId}&text=${encodedMessage}&parse_mode=Markdown`;
+      
+      const response = await fetch(telegramUrl);
+      const data = await response.json();
+      
+      if (!data.ok) {
+        throw new Error('Failed to send course link via Telegram');
+      }
+      
+      // Update order status to completed
+      const updatedOrders = orders.map(o => 
+        o.id === selectedOrderId ? { ...o, status: 'completed' as const } : o
+      );
+      
+      setOrders(updatedOrders);
+      localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      
+      toast({
+        title: "Course Link Sent",
+        description: "The course download link has been sent successfully.",
+        variant: "default",
+      });
+      
+      // Reset form
+      setCourseLink('');
+      setSelectedOrderId(null);
+      
+    } catch (error) {
+      console.error('Error sending course link:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send course link. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Udemy Course Hunter
           </h1>
@@ -182,33 +303,162 @@ Order is waiting for processing.
           </p>
         </div>
         
-        <div className="mb-12">
-          <SearchBar onSearch={handleSearch} />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {loading ? (
-            Array(3).fill(0).map((_, index) => (
-              <LoadingCard key={index} />
-            ))
-          ) : courses.length > 0 ? (
-            courses.map((course) => (
-              <CourseCard
-                key={course.id}
-                title={course.title}
-                description={course.description}
-                thumbnail={course.thumbnail}
-                onPurchase={() => handlePurchase(course.id)}
-                isLoading={purchaseLoading === course.id}
-              />
-            ))
-          ) : (
-            <div className="col-span-3 text-center py-10">
-              <h3 className="text-xl font-medium text-gray-700">No courses found</h3>
-              <p className="text-gray-500 mt-2">Try a different search term</p>
+        <Tabs defaultValue="courses" className="w-full">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+            <TabsTrigger value="courses">Courses</TabsTrigger>
+            <TabsTrigger value="admin">Admin Panel</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="courses" className="space-y-8">
+            <div className="mb-8">
+              <SearchBar onSearch={handleSearch} />
             </div>
-          )}
-        </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {loading ? (
+                Array(3).fill(0).map((_, index) => (
+                  <LoadingCard key={index} />
+                ))
+              ) : courses.length > 0 ? (
+                courses.map((course) => (
+                  <CourseCard
+                    key={course.id}
+                    title={course.title}
+                    description={course.description}
+                    thumbnail={course.image_480x270}
+                    price={course.price_detail?.amount}
+                    onPurchase={() => handlePurchase(course.id)}
+                    isLoading={purchaseLoading === course.id}
+                  />
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-10">
+                  <h3 className="text-xl font-medium text-gray-700">
+                    {loading ? 'Searching courses...' : 'Search for Udemy courses'}
+                  </h3>
+                  <p className="text-gray-500 mt-2">
+                    Enter a search term to find courses
+                  </p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="admin">
+            {!isAdmin ? (
+              <Card className="max-w-md mx-auto p-6">
+                <h2 className="text-2xl font-bold mb-4">Admin Login</h2>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="password" className="text-sm font-medium">
+                      Admin Password
+                    </label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="Enter admin password"
+                    />
+                  </div>
+                  <Button onClick={handleAdminLogin} className="w-full">
+                    Login
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-8">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">Admin Panel</h2>
+                  <Button variant="outline" onClick={handleAdminLogout}>
+                    Logout
+                  </Button>
+                </div>
+                
+                <Card className="p-6">
+                  <h3 className="text-xl font-semibold mb-4">Send Course Link</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="order" className="text-sm font-medium">
+                        Select Order
+                      </label>
+                      <select
+                        id="order"
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        value={selectedOrderId || ''}
+                        onChange={(e) => setSelectedOrderId(e.target.value || null)}
+                      >
+                        <option value="">-- Select an order --</option>
+                        {orders.map(order => (
+                          <option key={order.id} value={order.id}>
+                            {order.id} - {order.courseTitle}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="courseLink" className="text-sm font-medium">
+                        Course Download Link
+                      </label>
+                      <Input
+                        id="courseLink"
+                        type="text"
+                        value={courseLink}
+                        onChange={(e) => setCourseLink(e.target.value)}
+                        placeholder="Enter course download link"
+                      />
+                    </div>
+                    
+                    <Button onClick={handleSendCourseLink} className="w-full">
+                      Send Link to Customer
+                    </Button>
+                  </div>
+                </Card>
+                
+                <Card className="p-6">
+                  <h3 className="text-xl font-semibold mb-4">Order History</h3>
+                  {orders.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="py-2 px-4 text-left">Order ID</th>
+                            <th className="py-2 px-4 text-left">Course</th>
+                            <th className="py-2 px-4 text-left">Date</th>
+                            <th className="py-2 px-4 text-left">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {orders.map(order => (
+                            <tr key={order.id} className="border-b hover:bg-gray-50">
+                              <td className="py-2 px-4">{order.id}</td>
+                              <td className="py-2 px-4">{order.courseTitle}</td>
+                              <td className="py-2 px-4">{order.orderDate}</td>
+                              <td className="py-2 px-4">
+                                <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                  order.status === 'completed' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {order.status === 'completed' ? 'Delivered' : 'Pending'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">
+                      No orders found.
+                    </p>
+                  )}
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
