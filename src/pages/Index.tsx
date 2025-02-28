@@ -65,20 +65,34 @@ const Index = () => {
 
     setLoading(true);
     try {
-      // Use a proxy server to avoid CORS issues with the Udemy API
-      // In a real production app, you'd implement a backend service to handle this
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(
-        `https://www.udemy.com/api-2.0/courses/?search=${encodeURIComponent(query)}&page=1&page_size=12&fields[course]=@default,price,price_detail,image_480x270`
-      )}`;
+      // Use a reliable proxy server with proper error handling
+      const encodedQuery = encodeURIComponent(query);
+      const udemyApiUrl = `https://www.udemy.com/api-2.0/courses/?search=${encodedQuery}&page=1&page_size=12&fields[course]=@default,price,price_detail,image_480x270`;
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(udemyApiUrl)}`;
 
-      const response = await fetch(proxyUrl);
+      console.log('Fetching from URL:', proxyUrl);
+      
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      });
       
       if (!response.ok) {
-        throw new Error('Failed to fetch courses from Udemy');
+        const errorText = await response.text();
+        console.error('API response error:', response.status, errorText);
+        throw new Error(`API responded with status ${response.status}`);
       }
       
       const data = await response.json();
       console.log('Udemy API response:', data);
+      
+      if (!data.results || !Array.isArray(data.results)) {
+        console.error('Invalid API response format:', data);
+        throw new Error('Invalid response format from Udemy API');
+      }
       
       // Map the Udemy response to our course format
       setCourses(data.results || []);

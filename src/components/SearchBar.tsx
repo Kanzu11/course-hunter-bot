@@ -16,7 +16,7 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
       if (query.trim()) {
         onSearch(query);
       }
-    }, 500); // Wait 500ms after user stops typing
+    }, 800); // Increased to 800ms to reduce API calls frequency
 
     return () => clearTimeout(debounceTimer);
   }, [query, onSearch]);
