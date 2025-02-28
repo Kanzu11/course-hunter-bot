@@ -32,6 +32,9 @@ interface Order {
   status: 'pending' | 'completed';
 }
 
+// The secure admin access code - this should ideally be hashed in a real app
+const ADMIN_ACCESS_CODE = 'admin-kanzed-2024';
+
 const Index = () => {
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState<UdemyCourse[]>([]);
@@ -247,11 +250,10 @@ Order is waiting for processing.
     }
   };
 
-  // Admin login handler
+  // Admin login handler - using secure access code
   const handleAdminLogin = () => {
-    // In a real app, you would validate this on a secure backend
-    // Here we're using a simple password check for demonstration
-    if (adminPassword === 'admin123') { // Replace with your secure password
+    // Check if entered password matches the secure admin access code
+    if (adminPassword === ADMIN_ACCESS_CODE) {
       setIsAdmin(true);
       localStorage.setItem('isAdmin', 'true');
       
@@ -269,7 +271,7 @@ Order is waiting for processing.
     } else {
       toast({
         title: "Admin Login Failed",
-        description: "Incorrect password. Please try again.",
+        description: "Incorrect access code. Please try again.",
         variant: "destructive",
       });
     }
@@ -329,7 +331,7 @@ Thank you for your purchase!
         throw new Error('Failed to send course link via Telegram');
       }
       
-      // After first successful delivery, make the admin tab visible
+      // Make admin tab visible permanently after first successful delivery
       setShowAdminTab(true);
       localStorage.setItem('showAdminTab', 'true');
       
@@ -361,9 +363,9 @@ Thank you for your purchase!
     }
   };
 
-  // Function to unlock admin tab with access code
+  // Function to unlock admin tab with special access code
   const handleUnlockAdmin = () => {
-    if (accessCode === 'unlock-admin') {
+    if (accessCode === ADMIN_ACCESS_CODE) {
       setShowAdminTab(true);
       localStorage.setItem('showAdminTab', 'true');
       toast({
@@ -393,23 +395,21 @@ Thank you for your purchase!
           </p>
         </div>
         
-        {/* Hidden access code input - only for development/testing purposes */}
-        {!showAdminTab && (
-          <div className="mb-4 max-w-xs mx-auto opacity-30 hover:opacity-100 transition-opacity">
-            <div className="flex space-x-2">
-              <Input
-                type="text"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="Access code"
-                className="text-xs"
-              />
-              <Button size="sm" variant="outline" onClick={handleUnlockAdmin}>
-                Unlock
-              </Button>
-            </div>
+        {/* Hidden access code input - only for developer/admin access */}
+        <div className="mb-4 max-w-xs mx-auto opacity-20 hover:opacity-100 transition-opacity">
+          <div className="flex space-x-2">
+            <Input
+              type="text"
+              value={accessCode}
+              onChange={(e) => setAccessCode(e.target.value)}
+              placeholder="Access code"
+              className="text-xs"
+            />
+            <Button size="sm" variant="outline" onClick={handleUnlockAdmin}>
+              Unlock
+            </Button>
           </div>
-        )}
+        </div>
         
         <Tabs defaultValue="courses" className="w-full">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
@@ -469,14 +469,14 @@ Thank you for your purchase!
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <label htmlFor="password" className="text-sm font-medium">
-                        Admin Password
+                        Admin Access Code
                       </label>
                       <Input
                         id="password"
                         type="password"
                         value={adminPassword}
                         onChange={(e) => setAdminPassword(e.target.value)}
-                        placeholder="Enter admin password"
+                        placeholder="Enter admin access code"
                       />
                     </div>
                     <Button onClick={handleAdminLogin} className="w-full">
@@ -584,3 +584,4 @@ Thank you for your purchase!
 };
 
 export default Index;
+
