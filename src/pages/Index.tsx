@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-// Type for Udemy courses
+// Type for mock courses
 interface UdemyCourse {
   id: number;
   title: string;
@@ -34,6 +34,154 @@ interface Order {
 
 // The secure admin access code - this should ideally be hashed in a real app
 const ADMIN_ACCESS_CODE = 'admin-kanzed-2024';
+
+// Mock course data to replace Udemy API
+const MOCK_COURSES: UdemyCourse[] = [
+  {
+    id: 1,
+    title: "Complete Web Development Bootcamp 2024",
+    url: "https://www.udemy.com/course/web-development-bootcamp/",
+    description: "Become a full-stack web developer with just one course. HTML, CSS, Javascript, Node, React, MongoDB, Web3 and more!",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/1565838_e54e_16.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 2,
+    title: "Machine Learning A-Z: AI, Python & R + ChatGPT",
+    url: "https://www.udemy.com/course/machinelearning/",
+    description: "Learn to create Machine Learning Algorithms in Python and R from two Data Science experts. Code templates included.",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/950390_270f_3.jpg",
+    price: "$84.99",
+    price_detail: {
+      amount: 84.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 3,
+    title: "The Complete JavaScript Course 2024: From Zero to Expert!",
+    url: "https://www.udemy.com/course/the-complete-javascript-course/",
+    description: "The modern JavaScript course for everyone! Master JavaScript with projects, challenges and theory. Many courses in one!",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/851712_fc61_6.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 4,
+    title: "React - The Complete Guide 2024 (incl. React Router & Redux)",
+    url: "https://www.udemy.com/course/react-the-complete-guide-incl-redux/",
+    description: "Dive in and learn React.js from scratch! Learn Reactjs, Redux, React Routing, Animations, Next.js and more!",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/1362070_b9a1_2.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 5,
+    title: "Python for Data Science and Machine Learning Bootcamp",
+    url: "https://www.udemy.com/course/python-for-data-science-and-machine-learning-bootcamp/",
+    description: "Learn how to use NumPy, Pandas, Seaborn, Matplotlib, Plotly, Scikit-Learn, Machine Learning, and more!",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/903744_8eb2.jpg",
+    price: "$89.99",
+    price_detail: {
+      amount: 89.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 6,
+    title: "The Complete Digital Marketing Course - 12 Courses in 1",
+    url: "https://www.udemy.com/course/the-complete-digital-marketing-course/",
+    description: "Master Digital Marketing Strategy, Social Media Marketing, SEO, YouTube, Email, Facebook Marketing, Analytics & More!",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/914296_3670_8.jpg",
+    price: "$84.99",
+    price_detail: {
+      amount: 84.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 7,
+    title: "The Data Science Course 2024: Complete Data Science Bootcamp",
+    url: "https://www.udemy.com/course/the-data-science-course-complete-data-science-bootcamp/",
+    description: "Complete Data Science Training: Mathematics, Statistics, Python, Advanced Statistics in Python, Machine & Deep Learning",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/1754098_e0df_3.jpg",
+    price: "$84.99",
+    price_detail: {
+      amount: 84.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 8,
+    title: "AWS Certified Solutions Architect - Associate 2024",
+    url: "https://www.udemy.com/course/aws-certified-solutions-architect-associate-saa-c03/",
+    description: "Want to pass the AWS Solutions Architect Associate Exam? Want to become Amazon Web Services Certified? Do this course!",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/362328_91f3_10.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 9,
+    title: "The Complete Cyber Security Course: Hackers Exposed!",
+    url: "https://www.udemy.com/course/the-complete-internet-security-privacy-course-volume-1/",
+    description: "Volume 1: Become a Cyber Security Specialist, Defeat Hackers and Network Engineer with Practical Cyber Security Skills!",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/614772_233b_9.jpg",
+    price: "$74.99",
+    price_detail: {
+      amount: 74.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 10,
+    title: "iOS & Swift - The Complete iOS App Development Bootcamp",
+    url: "https://www.udemy.com/course/ios-13-app-development-bootcamp/",
+    description: "From Beginner to iOS App Developer with Just One Course! Fully Updated with Complete Modules on SwiftUI and Telegram Clones!",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/1778502_f4b9_12.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 11,
+    title: "Angular - The Complete Guide (2024 Edition)",
+    url: "https://www.udemy.com/course/the-complete-guide-to-angular-2/",
+    description: "Master Angular (formerly \"Angular 2\") and build awesome, reactive web apps with the successor of Angular.js",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/756150_c033_2.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    }
+  },
+  {
+    id: 12,
+    title: "Microsoft Excel - Excel from Beginner to Advanced",
+    url: "https://www.udemy.com/course/microsoft-excel-2013-from-beginner-to-advanced-and-beyond/",
+    description: "Excel with this A-Z Microsoft Excel Course. Microsoft Excel 2010, 2013, 2016, Excel 2019, Office 365",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/793796_0e89_2.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    }
+  }
+];
 
 const Index = () => {
   const [loading, setLoading] = useState(false);
@@ -73,91 +221,30 @@ const Index = () => {
     }
   }, []);
 
-  // Function to search courses directly from Udemy
-  const handleSearch = async (query: string) => {
-    if (!query.trim()) {
-      setCourses([]);
-      return;
-    }
-
+  // Function to search courses from our mock data
+  const handleSearch = (query: string) => {
     setLoading(true);
-    setCourses([]); // Clear previous results before fetching
-
-    try {
-      // Try several alternative proxy services
-      const proxyServices = [
-        'https://corsproxy.io/?',
-        'https://cors-anywhere.herokuapp.com/',
-        'https://api.allorigins.win/raw?url='
-      ];
-      
-      // Encode the search query properly
-      const encodedQuery = encodeURIComponent(query);
-      const udemyApiUrl = `https://www.udemy.com/api-2.0/courses/?search=${encodedQuery}&page=1&page_size=12&fields[course]=@default,price,price_detail,image_480x270`;
-      
-      let success = false;
-      let errorMessage = '';
-      
-      // Try each proxy service until one works
-      for (const proxyUrl of proxyServices) {
-        if (success) break;
+    
+    // Short timeout just to simulate a real search
+    setTimeout(() => {
+      if (!query.trim()) {
+        // If query is empty, show all courses
+        setCourses(MOCK_COURSES);
+      } else {
+        // Filter courses based on query
+        const filteredCourses = MOCK_COURSES.filter(course => {
+          const searchTerm = query.toLowerCase();
+          return (
+            course.title.toLowerCase().includes(searchTerm) ||
+            course.description.toLowerCase().includes(searchTerm)
+          );
+        });
         
-        try {
-          const fullUrl = `${proxyUrl}${encodeURIComponent(udemyApiUrl)}`;
-          console.log('Attempting fetch from:', fullUrl);
-          
-          const response = await fetch(fullUrl, {
-            method: 'GET',
-            headers: {
-              'Accept': 'application/json, text/plain, */*',
-              'Content-Type': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            }
-          });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API response error:', response.status, errorText);
-            errorMessage = `API responded with status ${response.status}`;
-            continue; // Try next proxy
-          }
-          
-          const data = await response.json();
-          console.log('Udemy API response:', data);
-          
-          if (!data.results || !Array.isArray(data.results)) {
-            console.error('Invalid API response format:', data);
-            errorMessage = 'Invalid response format from Udemy API';
-            continue; // Try next proxy
-          }
-          
-          // Success! Set courses and mark as successful
-          setCourses(data.results);
-          success = true;
-          break;
-          
-        } catch (proxyError) {
-          console.error(`Error with proxy ${proxyUrl}:`, proxyError);
-          errorMessage = `Proxy error: ${proxyError.message}`;
-          // Continue to next proxy
-        }
+        setCourses(filteredCourses);
       }
       
-      // If all proxies failed, show error
-      if (!success) {
-        throw new Error(errorMessage || 'Failed to fetch courses from Udemy');
-      }
-      
-    } catch (error) {
-      console.error('Error fetching Udemy courses:', error);
-      toast({
-        title: "Search Error",
-        description: "Failed to fetch courses from Udemy. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
       setLoading(false);
-    }
+    }, 300);
   };
 
   // Handle purchase process
@@ -383,6 +470,13 @@ Thank you for your purchase!
     }
   };
 
+  // Show all courses on initial load without requiring a search
+  useEffect(() => {
+    if (courses.length === 0 && !loading) {
+      setCourses(MOCK_COURSES);
+    }
+  }, [courses.length, loading]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -584,4 +678,3 @@ Thank you for your purchase!
 };
 
 export default Index;
-

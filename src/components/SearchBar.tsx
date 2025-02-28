@@ -10,22 +10,19 @@ interface SearchBarProps {
 const SearchBar = ({ onSearch }: SearchBarProps) => {
   const [query, setQuery] = useState('');
   
-  // Use debounce to avoid making too many API requests
+  // Use a shorter debounce to make search feel more responsive
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      if (query.trim()) {
-        onSearch(query);
-      }
-    }, 1200); // Increased to 1200ms to further reduce API calls frequency
+      // Even empty queries should trigger search now
+      onSearch(query);
+    }, 300); // Reduced to 300ms for better responsiveness
 
     return () => clearTimeout(debounceTimer);
   }, [query, onSearch]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) {
-      onSearch(query);
-    }
+    onSearch(query);
   };
 
   return (
