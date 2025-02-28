@@ -41,11 +41,17 @@ const Index = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [courseLink, setCourseLink] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [showAdminTab, setShowAdminTab] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
+  const [hasPurchased, setHasPurchased] = useState(false);
   const { toast } = useToast();
 
-  // Check for admin status in localStorage on initial load
+  // Check for admin status and purchase history in localStorage on initial load
   useEffect(() => {
     const storedIsAdmin = localStorage.getItem('isAdmin');
+    const storedHasPurchased = localStorage.getItem('hasPurchased');
+    const storedShowAdminTab = localStorage.getItem('showAdminTab');
+    
     if (storedIsAdmin === 'true') {
       setIsAdmin(true);
       // Load orders from localStorage
@@ -53,6 +59,14 @@ const Index = () => {
       if (storedOrders) {
         setOrders(JSON.parse(storedOrders));
       }
+    }
+    
+    if (storedHasPurchased === 'true') {
+      setHasPurchased(true);
+    }
+    
+    if (storedShowAdminTab === 'true') {
+      setShowAdminTab(true);
     }
   }, []);
 
@@ -95,8 +109,7 @@ const Index = () => {
               'Accept': 'application/json, text/plain, */*',
               'Content-Type': 'application/json',
               'X-Requested-With': 'XMLHttpRequest'
-            },
-            timeout: 10000 // 10 second timeout
+            }
           });
           
           if (!response.ok) {
@@ -171,6 +184,10 @@ const Index = () => {
       const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
       const updatedOrders = [...existingOrders, newOrder];
       localStorage.setItem('orders', JSON.stringify(updatedOrders));
+      
+      // Update purchase status
+      setHasPurchased(true);
+      localStorage.setItem('hasPurchased', 'true');
       
       // Update state if in admin mode
       if (isAdmin) {
@@ -312,6 +329,10 @@ Thank you for your purchase!
         throw new Error('Failed to send course link via Telegram');
       }
       
+      // After first successful delivery, make the admin tab visible
+      setShowAdminTab(true);
+      localStorage.setItem('showAdminTab', 'true');
+      
       // Update order status to completed
       const updatedOrders = orders.map(o => 
         o.id === selectedOrderId ? { ...o, status: 'completed' as const } : o
@@ -340,6 +361,26 @@ Thank you for your purchase!
     }
   };
 
+  // Function to unlock admin tab with access code
+  const handleUnlockAdmin = () => {
+    if (accessCode === 'unlock-admin') {
+      setShowAdminTab(true);
+      localStorage.setItem('showAdminTab', 'true');
+      toast({
+        title: "Admin Tab Unlocked",
+        description: "You now have access to the admin tab.",
+        variant: "default",
+      });
+      setAccessCode('');
+    } else {
+      toast({
+        title: "Invalid Code",
+        description: "The access code you entered is invalid.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -352,10 +393,28 @@ Thank you for your purchase!
           </p>
         </div>
         
+        {/* Hidden access code input - only for development/testing purposes */}
+        {!showAdminTab && (
+          <div className="mb-4 max-w-xs mx-auto opacity-30 hover:opacity-100 transition-opacity">
+            <div className="flex space-x-2">
+              <Input
+                type="text"
+                value={accessCode}
+                onChange={(e) => setAccessCode(e.target.value)}
+                placeholder="Access code"
+                className="text-xs"
+              />
+              <Button size="sm" variant="outline" onClick={handleUnlockAdmin}>
+                Unlock
+              </Button>
+            </div>
+          </div>
+        )}
+        
         <Tabs defaultValue="courses" className="w-full">
           <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
             <TabsTrigger value="courses">Courses</TabsTrigger>
-            <TabsTrigger value="admin">Admin Panel</TabsTrigger>
+            {showAdminTab && <TabsTrigger value="admin">Admin Panel</TabsTrigger>}
           </TabsList>
           
           <TabsContent value="courses" className="space-y-8">
@@ -391,122 +450,133 @@ Thank you for your purchase!
                 </div>
               )}
             </div>
-          </TabsContent>
-          
-          <TabsContent value="admin">
-            {!isAdmin ? (
-              <Card className="max-w-md mx-auto p-6">
-                <h2 className="text-2xl font-bold mb-4">Admin Login</h2>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label htmlFor="password" className="text-sm font-medium">
-                      Admin Password
-                    </label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={adminPassword}
-                      onChange={(e) => setAdminPassword(e.target.value)}
-                      placeholder="Enter admin password"
-                    />
-                  </div>
-                  <Button onClick={handleAdminLogin} className="w-full">
-                    Login
-                  </Button>
-                </div>
-              </Card>
-            ) : (
-              <div className="space-y-8">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">Admin Panel</h2>
-                  <Button variant="outline" onClick={handleAdminLogout}>
-                    Logout
-                  </Button>
-                </div>
-                
-                <Card className="p-6">
-                  <h3 className="text-xl font-semibold mb-4">Send Course Link</h3>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <label htmlFor="order" className="text-sm font-medium">
-                        Select Order
-                      </label>
-                      <select
-                        id="order"
-                        className="w-full p-2 border border-gray-300 rounded-md"
-                        value={selectedOrderId || ''}
-                        onChange={(e) => setSelectedOrderId(e.target.value || null)}
-                      >
-                        <option value="">-- Select an order --</option>
-                        {orders.map(order => (
-                          <option key={order.id} value={order.id}>
-                            {order.id} - {order.courseTitle}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label htmlFor="courseLink" className="text-sm font-medium">
-                        Course Download Link
-                      </label>
-                      <Input
-                        id="courseLink"
-                        type="text"
-                        value={courseLink}
-                        onChange={(e) => setCourseLink(e.target.value)}
-                        placeholder="Enter course download link"
-                      />
-                    </div>
-                    
-                    <Button onClick={handleSendCourseLink} className="w-full">
-                      Send Link to Customer
-                    </Button>
-                  </div>
-                </Card>
-                
-                <Card className="p-6">
-                  <h3 className="text-xl font-semibold mb-4">Order History</h3>
-                  {orders.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="py-2 px-4 text-left">Order ID</th>
-                            <th className="py-2 px-4 text-left">Course</th>
-                            <th className="py-2 px-4 text-left">Date</th>
-                            <th className="py-2 px-4 text-left">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {orders.map(order => (
-                            <tr key={order.id} className="border-b hover:bg-gray-50">
-                              <td className="py-2 px-4">{order.id}</td>
-                              <td className="py-2 px-4">{order.courseTitle}</td>
-                              <td className="py-2 px-4">{order.orderDate}</td>
-                              <td className="py-2 px-4">
-                                <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                                  order.status === 'completed' 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-yellow-100 text-yellow-800'
-                                }`}>
-                                  {order.status === 'completed' ? 'Delivered' : 'Pending'}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-4">
-                      No orders found.
-                    </p>
-                  )}
-                </Card>
+            
+            {hasPurchased && (
+              <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h3 className="text-lg font-medium text-green-800">Thank you for your order!</h3>
+                <p className="text-green-700">
+                  We're processing your request. You'll receive your course download link soon.
+                </p>
               </div>
             )}
           </TabsContent>
+          
+          {showAdminTab && (
+            <TabsContent value="admin">
+              {!isAdmin ? (
+                <Card className="max-w-md mx-auto p-6">
+                  <h2 className="text-2xl font-bold mb-4">Admin Login</h2>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="password" className="text-sm font-medium">
+                        Admin Password
+                      </label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={adminPassword}
+                        onChange={(e) => setAdminPassword(e.target.value)}
+                        placeholder="Enter admin password"
+                      />
+                    </div>
+                    <Button onClick={handleAdminLogin} className="w-full">
+                      Login
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
+                <div className="space-y-8">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold">Admin Panel</h2>
+                    <Button variant="outline" onClick={handleAdminLogout}>
+                      Logout
+                    </Button>
+                  </div>
+                  
+                  <Card className="p-6">
+                    <h3 className="text-xl font-semibold mb-4">Send Course Link</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label htmlFor="order" className="text-sm font-medium">
+                          Select Order
+                        </label>
+                        <select
+                          id="order"
+                          className="w-full p-2 border border-gray-300 rounded-md"
+                          value={selectedOrderId || ''}
+                          onChange={(e) => setSelectedOrderId(e.target.value || null)}
+                        >
+                          <option value="">-- Select an order --</option>
+                          {orders.map(order => (
+                            <option key={order.id} value={order.id}>
+                              {order.id} - {order.courseTitle}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="courseLink" className="text-sm font-medium">
+                          Course Download Link
+                        </label>
+                        <Input
+                          id="courseLink"
+                          type="text"
+                          value={courseLink}
+                          onChange={(e) => setCourseLink(e.target.value)}
+                          placeholder="Enter course download link"
+                        />
+                      </div>
+                      
+                      <Button onClick={handleSendCourseLink} className="w-full">
+                        Send Link to Customer
+                      </Button>
+                    </div>
+                  </Card>
+                  
+                  <Card className="p-6">
+                    <h3 className="text-xl font-semibold mb-4">Order History</h3>
+                    {orders.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="py-2 px-4 text-left">Order ID</th>
+                              <th className="py-2 px-4 text-left">Course</th>
+                              <th className="py-2 px-4 text-left">Date</th>
+                              <th className="py-2 px-4 text-left">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {orders.map(order => (
+                              <tr key={order.id} className="border-b hover:bg-gray-50">
+                                <td className="py-2 px-4">{order.id}</td>
+                                <td className="py-2 px-4">{order.courseTitle}</td>
+                                <td className="py-2 px-4">{order.orderDate}</td>
+                                <td className="py-2 px-4">
+                                  <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
+                                    order.status === 'completed' 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-yellow-100 text-yellow-800'
+                                  }`}>
+                                    {order.status === 'completed' ? 'Delivered' : 'Pending'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-center py-4">
+                        No orders found.
+                      </p>
+                    )}
+                  </Card>
+                </div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
