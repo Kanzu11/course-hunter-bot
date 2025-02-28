@@ -64,46 +64,81 @@ const Index = () => {
     }
 
     setLoading(true);
+    setCourses([]); // Clear previous results before fetching
+
     try {
-      // Use a reliable proxy server with proper error handling
+      // Try several alternative proxy services
+      const proxyServices = [
+        'https://corsproxy.io/?',
+        'https://cors-anywhere.herokuapp.com/',
+        'https://api.allorigins.win/raw?url='
+      ];
+      
+      // Encode the search query properly
       const encodedQuery = encodeURIComponent(query);
       const udemyApiUrl = `https://www.udemy.com/api-2.0/courses/?search=${encodedQuery}&page=1&page_size=12&fields[course]=@default,price,price_detail,image_480x270`;
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(udemyApiUrl)}`;
-
-      console.log('Fetching from URL:', proxyUrl);
       
-      const response = await fetch(proxyUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
+      let success = false;
+      let errorMessage = '';
+      
+      // Try each proxy service until one works
+      for (const proxyUrl of proxyServices) {
+        if (success) break;
+        
+        try {
+          const fullUrl = `${proxyUrl}${encodeURIComponent(udemyApiUrl)}`;
+          console.log('Attempting fetch from:', fullUrl);
+          
+          const response = await fetch(fullUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json, text/plain, */*',
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            timeout: 10000 // 10 second timeout
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API response error:', response.status, errorText);
+            errorMessage = `API responded with status ${response.status}`;
+            continue; // Try next proxy
+          }
+          
+          const data = await response.json();
+          console.log('Udemy API response:', data);
+          
+          if (!data.results || !Array.isArray(data.results)) {
+            console.error('Invalid API response format:', data);
+            errorMessage = 'Invalid response format from Udemy API';
+            continue; // Try next proxy
+          }
+          
+          // Success! Set courses and mark as successful
+          setCourses(data.results);
+          success = true;
+          break;
+          
+        } catch (proxyError) {
+          console.error(`Error with proxy ${proxyUrl}:`, proxyError);
+          errorMessage = `Proxy error: ${proxyError.message}`;
+          // Continue to next proxy
         }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API response error:', response.status, errorText);
-        throw new Error(`API responded with status ${response.status}`);
       }
       
-      const data = await response.json();
-      console.log('Udemy API response:', data);
-      
-      if (!data.results || !Array.isArray(data.results)) {
-        console.error('Invalid API response format:', data);
-        throw new Error('Invalid response format from Udemy API');
+      // If all proxies failed, show error
+      if (!success) {
+        throw new Error(errorMessage || 'Failed to fetch courses from Udemy');
       }
       
-      // Map the Udemy response to our course format
-      setCourses(data.results || []);
     } catch (error) {
       console.error('Error fetching Udemy courses:', error);
       toast({
         title: "Search Error",
-        description: "Failed to fetch courses from Udemy. Please try again.",
+        description: "Failed to fetch courses from Udemy. Please try again later.",
         variant: "destructive",
       });
-      setCourses([]);
     } finally {
       setLoading(false);
     }

@@ -16,7 +16,7 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
       if (query.trim()) {
         onSearch(query);
       }
-    }, 800); // Increased to 800ms to reduce API calls frequency
+    }, 1200); // Increased to 1200ms to further reduce API calls frequency
 
     return () => clearTimeout(debounceTimer);
   }, [query, onSearch]);
