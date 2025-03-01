@@ -30,9 +30,10 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
     debounceSearch(value);
   };
 
+  // Enhanced handleSubmit to immediately trigger search when user presses Enter
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSearch(query);
+    onSearch(query); // Immediately trigger search without debounce
   };
 
   return (
@@ -46,6 +47,12 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
           onChange={handleChange}
         />
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <button 
+          type="submit" 
+          className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary text-white px-4 py-1 rounded-md text-sm hover:bg-primary/90 transition-colors"
+        >
+          Search
+        </button>
       </div>
     </form>
   );
