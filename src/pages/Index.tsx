@@ -185,7 +185,7 @@ const MOCK_COURSES: UdemyCourse[] = [
 ];
 
 const Index = () => {
-  // Initialize states once during component mount
+  // State variables with stable initialization
   const [loading, setLoading] = useState(false);
   const [courses, setCourses] = useState<UdemyCourse[]>(MOCK_COURSES);
   const [purchaseLoading, setPurchaseLoading] = useState<number | null>(null);
@@ -200,9 +200,10 @@ const Index = () => {
   const [showAdminTab, setShowAdminTab] = useState(() => localStorage.getItem('showAdminTab') === 'true');
   const [accessCode, setAccessCode] = useState('');
   const [hasPurchased, setHasPurchased] = useState(() => localStorage.getItem('hasPurchased') === 'true');
+  const [userChatId, setUserChatId] = useState('');
   const { toast } = useToast();
 
-  // Function to search courses from our mock data
+  // Function to search courses from our mock data - without setting loading state repeatedly
   const handleSearch = (query: string) => {
     if (loading) return; // Prevent multiple concurrent searches
     
@@ -243,9 +244,8 @@ const Index = () => {
         throw new Error('Course not found');
       }
       
-      // Prompt user for their Telegram username to receive the course
-      const userPrompt = "Please provide your Telegram chat ID to receive the course. To get your chat ID:\n\n1. Start our bot: https://t.me/CourseHunterEthiopia_bot\n2. Send the /start command\n3. Copy the chat ID shown";
-      const userInputChatId = prompt(userPrompt);
+      // Prompt user for their Telegram chat ID
+      const userInputChatId = prompt("Please enter your Telegram chat ID to receive the course:");
       
       if (!userInputChatId) {
         toast({
@@ -253,7 +253,6 @@ const Index = () => {
           description: "You need to provide a Telegram chat ID to complete your order.",
           variant: "destructive",
         });
-        setPurchaseLoading(null);
         return;
       }
       
@@ -279,8 +278,12 @@ const Index = () => {
       setHasPurchased(true);
       localStorage.setItem('hasPurchased', 'true');
       
-      // Update state
-      setOrders(prevOrders => [...prevOrders, newOrder]);
+      // Update state if in admin mode
+      if (isAdmin) {
+        setOrders(updatedOrders);
+      } else {
+        setOrders(existingOrders => [...existingOrders, newOrder]);
+      }
       
       // Send notification to Telegram channel using the bot
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
@@ -316,7 +319,7 @@ Order is waiting for processing.
       // Show success message
       toast({
         title: "Order Placed Successfully!",
-        description: `Your order for "${course.title}" has been placed. We'll send you the course details on Telegram.`,
+        description: `Your order for "${course.title}" has been placed. We'll send you the course details to your Telegram.`,
         variant: "default",
       });
       
@@ -370,7 +373,7 @@ Order is waiting for processing.
     });
   };
 
-  // Send course link via Telegram bot directly to user
+  // Send course link via Telegram bot - Updated to use direct user chat ID
   const handleSendCourseLink = async () => {
     if (!selectedOrderId || !courseLink.trim()) {
       toast({
@@ -390,7 +393,7 @@ Order is waiting for processing.
       if (!order.chatId) {
         toast({
           title: "Error",
-          description: "This order doesn't have a chat ID. Please ask the customer to start the bot and provide their chat ID.",
+          description: "This order doesn't have a chat ID. Please ask the customer for their Telegram chat ID.",
           variant: "destructive",
         });
         return;
@@ -490,6 +493,13 @@ Course has been delivered to the customer.
     }
   };
 
+  // Load initial data only once on component mount
+  useEffect(() => {
+    // All state is initialized with lazy initializers now, so no additional loading needed
+    
+    // This effect should only run once on mount
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -564,17 +574,6 @@ Course has been delivered to the customer.
                 <p className="text-green-700">
                   We're processing your request. You'll receive your course download link on Telegram.
                 </p>
-                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <p className="text-blue-600 text-sm">
-                    <strong>Important:</strong> To receive your course, please start our Telegram bot:
-                  </p>
-                  <p className="text-blue-600 text-sm mt-1">
-                    1. Open <a href="https://t.me/CourseHunterEthiopia_bot" target="_blank" rel="noopener noreferrer" className="underline font-medium">@CourseHunterEthiopia_bot</a> on Telegram
-                  </p>
-                  <p className="text-blue-600 text-sm">
-                    2. Send the <code className="bg-blue-100 px-1 rounded">/start</code> command to get your chat ID
-                  </p>
-                </div>
               </div>
             )}
           </TabsContent>
