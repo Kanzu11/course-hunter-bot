@@ -30,6 +30,7 @@ interface Order {
   courseTitle: string;
   orderDate: string;
   status: 'pending' | 'completed';
+  chatId?: string; // Add chat ID for Telegram messaging
 }
 
 // The secure admin access code - this should ideally be hashed in a real app
@@ -184,45 +185,28 @@ const MOCK_COURSES: UdemyCourse[] = [
 ];
 
 const Index = () => {
+  // State variables with stable initialization
   const [loading, setLoading] = useState(false);
-  const [courses, setCourses] = useState<UdemyCourse[]>([]);
+  const [courses, setCourses] = useState<UdemyCourse[]>(MOCK_COURSES);
   const [purchaseLoading, setPurchaseLoading] = useState<number | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('isAdmin') === 'true');
   const [adminPassword, setAdminPassword] = useState('');
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const storedOrders = localStorage.getItem('orders');
+    return storedOrders ? JSON.parse(storedOrders) : [];
+  });
   const [courseLink, setCourseLink] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [showAdminTab, setShowAdminTab] = useState(false);
+  const [showAdminTab, setShowAdminTab] = useState(() => localStorage.getItem('showAdminTab') === 'true');
   const [accessCode, setAccessCode] = useState('');
-  const [hasPurchased, setHasPurchased] = useState(false);
+  const [hasPurchased, setHasPurchased] = useState(() => localStorage.getItem('hasPurchased') === 'true');
+  const [userChatId, setUserChatId] = useState('');
   const { toast } = useToast();
 
-  // Check for admin status and purchase history in localStorage on initial load
-  useEffect(() => {
-    const storedIsAdmin = localStorage.getItem('isAdmin');
-    const storedHasPurchased = localStorage.getItem('hasPurchased');
-    const storedShowAdminTab = localStorage.getItem('showAdminTab');
-    
-    if (storedIsAdmin === 'true') {
-      setIsAdmin(true);
-      // Load orders from localStorage
-      const storedOrders = localStorage.getItem('orders');
-      if (storedOrders) {
-        setOrders(JSON.parse(storedOrders));
-      }
-    }
-    
-    if (storedHasPurchased === 'true') {
-      setHasPurchased(true);
-    }
-    
-    if (storedShowAdminTab === 'true') {
-      setShowAdminTab(true);
-    }
-  }, []);
-
-  // Function to search courses from our mock data
+  // Function to search courses from our mock data - without setting loading state repeatedly
   const handleSearch = (query: string) => {
+    if (loading) return; // Prevent multiple concurrent searches
+    
     setLoading(true);
     
     // Short timeout just to simulate a real search
@@ -249,25 +233,40 @@ const Index = () => {
 
   // Handle purchase process
   const handlePurchase = async (courseId: number) => {
+    if (purchaseLoading !== null) return; // Prevent multiple concurrent purchases
+    
     try {
       setPurchaseLoading(courseId);
       
       // Find the course
-      const course = courses.find(c => c.id === courseId);
+      const course = MOCK_COURSES.find(c => c.id === courseId);
       if (!course) {
         throw new Error('Course not found');
+      }
+      
+      // Prompt user for their Telegram chat ID
+      const userInputChatId = prompt("Please enter your Telegram chat ID to receive the course:");
+      
+      if (!userInputChatId) {
+        toast({
+          title: "Order Cancelled",
+          description: "You need to provide a Telegram chat ID to complete your order.",
+          variant: "destructive",
+        });
+        return;
       }
       
       // Create a unique order ID
       const orderId = `ORDER-${Date.now()}`;
       
-      // Create a new order
+      // Create a new order with chat ID
       const newOrder: Order = {
         id: orderId,
         courseId: course.id,
         courseTitle: course.title,
         orderDate: new Date().toLocaleString(),
-        status: 'pending'
+        status: 'pending',
+        chatId: userInputChatId
       };
       
       // Save order to localStorage
@@ -282,6 +281,8 @@ const Index = () => {
       // Update state if in admin mode
       if (isAdmin) {
         setOrders(updatedOrders);
+      } else {
+        setOrders(existingOrders => [...existingOrders, newOrder]);
       }
       
       // Send notification to Telegram channel using the bot
@@ -296,6 +297,7 @@ const Index = () => {
 🆔 *Order ID:* ${orderId}
 💰 *Price:* 300 ETB
 ⏰ *Order Time:* ${new Date().toLocaleString()}
+👤 *User Chat ID:* ${userInputChatId}
 
 Order is waiting for processing.
 `;
@@ -317,13 +319,9 @@ Order is waiting for processing.
       // Show success message
       toast({
         title: "Order Placed Successfully!",
-        description: `Your order for "${course.title}" has been placed. We'll send you the course details soon.`,
+        description: `Your order for "${course.title}" has been placed. We'll send you the course details to your Telegram.`,
         variant: "default",
       });
-      
-      console.log('Purchase completed for course:', courseId);
-      console.log('Notification sent to Telegram channel');
-      console.log('Telegram API response:', data);
       
     } catch (error) {
       console.error('Purchase error:', error);
@@ -375,7 +373,7 @@ Order is waiting for processing.
     });
   };
 
-  // Send course link via Telegram bot
+  // Send course link via Telegram bot - Updated to use direct user chat ID
   const handleSendCourseLink = async () => {
     if (!selectedOrderId || !courseLink.trim()) {
       toast({
@@ -392,11 +390,18 @@ Order is waiting for processing.
         throw new Error('Order not found');
       }
 
-      // Create a direct message to the user
-      // Note: In a real app, you'd store the user's chat ID during order placement
-      // For this demo, we're just sending to the channel
+      if (!order.chatId) {
+        toast({
+          title: "Error",
+          description: "This order doesn't have a chat ID. Please ask the customer for their Telegram chat ID.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Send message directly to the user's chat ID
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
-      const channelId = '@udemmmmp'; // Channel username with @ symbol
+      const userChatId = order.chatId; // Use the stored chat ID
       
       const message = `
 ✅ *COURSE DELIVERY*
@@ -409,14 +414,32 @@ Thank you for your purchase!
 `;
       
       const encodedMessage = encodeURIComponent(message);
-      const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${channelId}&text=${encodedMessage}&parse_mode=Markdown`;
+      const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${userChatId}&text=${encodedMessage}&parse_mode=Markdown`;
       
       const response = await fetch(telegramUrl);
       const data = await response.json();
       
       if (!data.ok) {
-        throw new Error('Failed to send course link via Telegram');
+        console.error('Telegram API error:', data);
+        throw new Error(`Failed to send course link via Telegram: ${JSON.stringify(data)}`);
       }
+      
+      // Also send confirmation to the channel
+      const channelId = '@udemmmmp';
+      const channelMessage = `
+📬 *COURSE DELIVERED*
+
+🆔 *Order ID:* ${order.id}
+📚 *Course:* ${order.courseTitle}
+👤 *User Chat ID:* ${order.chatId}
+
+Course has been delivered to the customer.
+`;
+      
+      const encodedChannelMessage = encodeURIComponent(channelMessage);
+      const channelUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${channelId}&text=${encodedChannelMessage}&parse_mode=Markdown`;
+      
+      await fetch(channelUrl);
       
       // Make admin tab visible permanently after first successful delivery
       setShowAdminTab(true);
@@ -432,7 +455,7 @@ Thank you for your purchase!
       
       toast({
         title: "Course Link Sent",
-        description: "The course download link has been sent successfully.",
+        description: "The course download link has been sent successfully to the customer's Telegram.",
         variant: "default",
       });
       
@@ -470,12 +493,12 @@ Thank you for your purchase!
     }
   };
 
-  // Show all courses on initial load without requiring a search
+  // Load initial data only once on component mount
   useEffect(() => {
-    if (courses.length === 0 && !loading) {
-      setCourses(MOCK_COURSES);
-    }
-  }, [courses.length, loading]);
+    // All state is initialized with lazy initializers now, so no additional loading needed
+    
+    // This effect should only run once on mount
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -549,7 +572,7 @@ Thank you for your purchase!
               <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <h3 className="text-lg font-medium text-green-800">Thank you for your order!</h3>
                 <p className="text-green-700">
-                  We're processing your request. You'll receive your course download link soon.
+                  We're processing your request. You'll receive your course download link on Telegram.
                 </p>
               </div>
             )}
@@ -603,7 +626,7 @@ Thank you for your purchase!
                           <option value="">-- Select an order --</option>
                           {orders.map(order => (
                             <option key={order.id} value={order.id}>
-                              {order.id} - {order.courseTitle}
+                              {order.id} - {order.courseTitle} {order.chatId ? `(Chat ID: ${order.chatId})` : ''}
                             </option>
                           ))}
                         </select>
@@ -639,6 +662,7 @@ Thank you for your purchase!
                               <th className="py-2 px-4 text-left">Course</th>
                               <th className="py-2 px-4 text-left">Date</th>
                               <th className="py-2 px-4 text-left">Status</th>
+                              <th className="py-2 px-4 text-left">Chat ID</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -656,6 +680,7 @@ Thank you for your purchase!
                                     {order.status === 'completed' ? 'Delivered' : 'Pending'}
                                   </span>
                                 </td>
+                                <td className="py-2 px-4">{order.chatId || 'Not provided'}</td>
                               </tr>
                             ))}
                           </tbody>
