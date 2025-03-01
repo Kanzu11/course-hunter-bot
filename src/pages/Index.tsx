@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import SearchBar from '@/components/SearchBar';
 import CourseCard from '@/components/CourseCard';
@@ -214,9 +215,9 @@ const Index = () => {
         // If query is empty, show all courses
         setCourses(MOCK_COURSES);
       } else {
-        // Filter courses based on query with more flexible matching
-        const searchTerm = query.toLowerCase();
+        // Filter courses based on query
         const filteredCourses = MOCK_COURSES.filter(course => {
+          const searchTerm = query.toLowerCase();
           return (
             course.title.toLowerCase().includes(searchTerm) ||
             course.description.toLowerCase().includes(searchTerm)
@@ -492,10 +493,11 @@ Course has been delivered to the customer.
     }
   };
 
-  // Initialize courses on component mount
+  // Load initial data only once on component mount
   useEffect(() => {
-    // Load all courses initially
-    setCourses(MOCK_COURSES);
+    // All state is initialized with lazy initializers now, so no additional loading needed
+    
+    // This effect should only run once on mount
   }, []);
 
   return (
@@ -557,10 +559,10 @@ Course has been delivered to the customer.
               ) : (
                 <div className="col-span-3 text-center py-10">
                   <h3 className="text-xl font-medium text-gray-700">
-                    No courses found
+                    {loading ? 'Searching courses...' : 'Search for courses'}
                   </h3>
                   <p className="text-gray-500 mt-2">
-                    Try a different search term
+                    Enter a search term to find courses
                   </p>
                 </div>
               )}

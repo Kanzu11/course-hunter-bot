@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -34,12 +34,6 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
     e.preventDefault();
     onSearch(query);
   };
-
-  // Call onSearch on component mount to load all courses initially
-  useEffect(() => {
-    // Pass empty string to load all courses on initial render
-    onSearch('');
-  }, [onSearch]);
 
   return (
     <form onSubmit={handleSubmit} className="relative w-full max-w-2xl mx-auto">
