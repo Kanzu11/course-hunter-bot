@@ -1,4 +1,3 @@
-
 interface UdemyCourse {
   id: number;
   title: string;
@@ -43,64 +42,90 @@ export const searchUdemyCourses = async (query: string): Promise<UdemyCourse[]> 
   }
 };
 
-// Enhanced mock course search
+// Enhanced mock course search with improved matching logic
 export const searchMockCourses = (query: string): UdemyCourse[] => {
   if (!query.trim()) return ALL_COURSES;
   
-  const searchTerms = query.toLowerCase().split(/\s+/);
+  // Normalize the search query (remove extra spaces, lowercase)
+  const normalizedQuery = query.toLowerCase().trim().replace(/\s+/g, ' ');
+  const searchTerms = normalizedQuery.split(/\s+/);
   
-  // First, try to find exact title matches
+  console.log(`Searching for: "${normalizedQuery}" with terms:`, searchTerms);
+  
+  // First, try to find exact title matches (case insensitive)
   const exactMatches = ALL_COURSES.filter(course => {
-    const titleLower = course.title.toLowerCase();
-    return titleLower === query.toLowerCase() || 
-           titleLower.includes(query.toLowerCase());
+    const normalizedTitle = course.title.toLowerCase().trim().replace(/\s+/g, ' ');
+    return normalizedTitle === normalizedQuery || 
+           normalizedTitle.includes(normalizedQuery);
   });
   
   if (exactMatches.length > 0) {
+    console.log(`Found ${exactMatches.length} exact matches`);
     return exactMatches;
   }
   
   // Then, try keyword matching with a scoring system
   const scoredCourses = ALL_COURSES.map(course => {
-    const titleLower = course.title.toLowerCase();
-    const descLower = course.description.toLowerCase();
+    const normalizedTitle = course.title.toLowerCase().trim().replace(/\s+/g, ' ');
+    const normalizedDesc = course.description.toLowerCase().trim().replace(/\s+/g, ' ');
     
     let score = 0;
     
+    // Check if all search terms are in the title or description
+    let allTermsInTitle = true;
+    let allTermsInDesc = true;
+    
     // Score each search term
     searchTerms.forEach(term => {
+      if (term.length < 3) return; // Skip very short terms
+      
+      if (!normalizedTitle.includes(term)) {
+        allTermsInTitle = false;
+      }
+      
+      if (!normalizedDesc.includes(term)) {
+        allTermsInDesc = false;
+      }
+      
       // Title matches are weighted higher
-      if (titleLower.includes(term)) {
+      if (normalizedTitle.includes(term)) {
         score += 10;
         
         // Bonus points for word boundaries
-        if (new RegExp(`\\b${term}\\b`).test(titleLower)) {
+        if (new RegExp(`\\b${term}\\b`).test(normalizedTitle)) {
           score += 5;
         }
       }
       
       // Description matches
-      if (descLower.includes(term)) {
+      if (normalizedDesc.includes(term)) {
         score += 3;
         
         // Bonus for word boundaries in description
-        if (new RegExp(`\\b${term}\\b`).test(descLower)) {
+        if (new RegExp(`\\b${term}\\b`).test(normalizedDesc)) {
           score += 2;
         }
       }
     });
     
+    // Bonus for having all terms in title or description
+    if (allTermsInTitle) score += 20;
+    if (allTermsInDesc) score += 10;
+    
     return { course, score };
   });
   
   // Filter out courses with no match and sort by score
-  return scoredCourses
+  const results = scoredCourses
     .filter(item => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .map(item => item.course);
+  
+  console.log(`Found ${results.length} results after scoring`);
+  return results;
 };
 
-// Extended mock course data with ratings
+// Add the new Graphic Design course to our mock data
 export const ALL_COURSES: UdemyCourse[] = [
   {
     id: 1,
@@ -296,5 +321,20 @@ export const ALL_COURSES: UdemyCourse[] = [
     rating: 4.7,
     num_reviews: 137482,
     instructor: "Dr. Angela Yu"
+  },
+  {
+    id: 14,
+    title: "Graphic Design Masterclass - Learn GREAT Design",
+    url: "https://www.udemy.com/course/graphic-design-masterclass-learn-great-design/",
+    description: "The Ultimate Graphic Design Course Which Covers Photoshop, Illustrator, InDesign, Design Theory, Branding and Logo Design",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/1643044_e281_5.jpg",
+    price: "$84.99",
+    price_detail: {
+      amount: 84.99,
+      currency: "USD"
+    },
+    rating: 4.7,
+    num_reviews: 24581,
+    instructor: "Lindsay Marsh"
   }
 ];

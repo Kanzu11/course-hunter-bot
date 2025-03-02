@@ -11,7 +11,6 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { searchUdemyCourses, ALL_COURSES } from '@/utils/udemyApi';
 
-// Type for Telegram user
 interface TelegramUser {
   id: number;
   first_name: string;
@@ -22,19 +21,17 @@ interface TelegramUser {
   hash: string;
 }
 
-// Type for orders
 interface Order {
   id: string;
   courseId: number;
   courseTitle: string;
   orderDate: string;
   status: 'pending' | 'completed';
-  chatId?: string; // Add chat ID for Telegram messaging
-  customerId?: number; // Add customer Telegram ID
-  customerName?: string; // Add customer name
+  chatId?: string;
+  customerId?: number;
+  customerName?: string;
 }
 
-// The secure admin access code - this should ideally be hashed in a real app
 const ADMIN_ACCESS_CODE = 'admin-kanzed-2024';
 
 const Index = () => {
@@ -59,19 +56,16 @@ const Index = () => {
   });
   const { toast } = useToast();
 
-  // Enhanced search function with better matching and Udemy API integration
   const handleSearch = async (query: string) => {
-    if (loading) return; // Prevent multiple concurrent searches
+    if (loading) return;
     
     setLoading(true);
     
     try {
-      // Use our enhanced search function
       const searchResults = await searchUdemyCourses(query);
       
       setCourses(searchResults);
       
-      // Show a message if no results were found
       if (searchResults.length === 0 && query.trim() !== '') {
         toast({
           title: "No courses found",
@@ -97,12 +91,10 @@ const Index = () => {
     }
   };
 
-  // Handle Telegram authentication
   const handleTelegramAuth = (user: TelegramUser) => {
     console.log('Authenticated with Telegram:', user);
     setTelegramUser(user);
     
-    // Store user in localStorage
     localStorage.setItem('telegramUser', JSON.stringify(user));
     
     toast({
@@ -112,14 +104,12 @@ const Index = () => {
     });
   };
 
-  // Handle purchase process - using Telegram data
   const handlePurchase = async (courseId: number) => {
-    if (purchaseLoading !== null) return; // Prevent multiple concurrent purchases
+    if (purchaseLoading !== null) return;
     
     try {
       setPurchaseLoading(courseId);
       
-      // Check if user is logged in with Telegram
       if (!telegramUser) {
         toast({
           title: "Login Required",
@@ -130,16 +120,13 @@ const Index = () => {
         return;
       }
       
-      // Find the course
       const course = ALL_COURSES.find(c => c.id === courseId);
       if (!course) {
         throw new Error('Course not found');
       }
       
-      // Create a unique order ID
       const orderId = `ORDER-${Date.now()}`;
       
-      // Create a new order with Telegram user data
       const newOrder: Order = {
         id: orderId,
         courseId: course.id,
@@ -151,33 +138,28 @@ const Index = () => {
         customerName: `${telegramUser.first_name} ${telegramUser.last_name || ''}`
       };
       
-      // Save order to localStorage
       const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
       const updatedOrders = [...existingOrders, newOrder];
       localStorage.setItem('orders', JSON.stringify(updatedOrders));
       
-      // Update purchase status
       setHasPurchased(true);
       localStorage.setItem('hasPurchased', 'true');
       
-      // Update state if in admin mode
       if (isAdmin) {
         setOrders(updatedOrders);
       } else {
         setOrders(existingOrders => [...existingOrders, newOrder]);
       }
       
-      // Send notification to Telegram channel using the bot
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
-      const channelId = '@udemmmmp'; // Channel username with @ symbol
+      const channelId = '@udemmmmp';
       
-      // Create order message
       const orderMessage = `
 🛒 *NEW COURSE ORDER*
 
 📚 *Course:* ${course.title}
 🆔 *Order ID:* ${orderId}
-💰 *Price:* 300 ETB
+💰 *Price:* 299 ETB
 ⏰ *Order Time:* ${new Date().toLocaleString()}
 👤 *Customer:* ${telegramUser.first_name} ${telegramUser.last_name || ''}
 🆔 *Telegram ID:* ${telegramUser.id}
@@ -186,10 +168,8 @@ ${telegramUser.username ? `👤 *Username:* @${telegramUser.username}` : ''}
 Order is waiting for processing. Course will be sent directly to the customer.
 `;
       
-      // Encode message for URL
       const encodedMessage = encodeURIComponent(orderMessage);
       
-      // Send to Telegram
       const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${channelId}&text=${encodedMessage}&parse_mode=Markdown`;
       
       const response = await fetch(telegramUrl);
@@ -200,7 +180,6 @@ Order is waiting for processing. Course will be sent directly to the customer.
         throw new Error(`Failed to send notification to Telegram: ${JSON.stringify(data)}`);
       }
       
-      // Also notify the customer
       const customerMessage = `
 🎉 *Order Placed Successfully!*
 
@@ -208,7 +187,7 @@ Thank you for your order with CourseHunter.
 
 📚 *Course:* ${course.title}
 🆔 *Order ID:* ${orderId}
-💰 *Price:* 300 ETB
+💰 *Price:* 299 ETB
 
 Your course download link will be sent to you directly in this chat once the order is processed. Please be patient.
 `;
@@ -218,7 +197,6 @@ Your course download link will be sent to you directly in this chat once the ord
       
       await fetch(customerUrl);
       
-      // Show success message with instructions for the user
       toast({
         title: "Order Placed Successfully!",
         description: `Your order for "${course.title}" has been placed. You will receive your course via Telegram soon.`,
@@ -237,14 +215,11 @@ Your course download link will be sent to you directly in this chat once the ord
     }
   };
 
-  // Admin login handler - using secure access code
   const handleAdminLogin = () => {
-    // Check if entered password matches the secure admin access code
     if (adminPassword === ADMIN_ACCESS_CODE) {
       setIsAdmin(true);
       localStorage.setItem('isAdmin', 'true');
       
-      // Load orders from localStorage
       const storedOrders = localStorage.getItem('orders');
       if (storedOrders) {
         setOrders(JSON.parse(storedOrders));
@@ -264,7 +239,6 @@ Your course download link will be sent to you directly in this chat once the ord
     }
   };
 
-  // Admin logout handler
   const handleAdminLogout = () => {
     setIsAdmin(false);
     localStorage.removeItem('isAdmin');
@@ -275,7 +249,6 @@ Your course download link will be sent to you directly in this chat once the ord
     });
   };
 
-  // Send course link via Telegram bot - Updated to include custom message
   const handleSendCourseLink = async () => {
     if (!selectedOrderId || !courseLink.trim()) {
       toast({
@@ -301,9 +274,8 @@ Your course download link will be sent to you directly in this chat once the ord
         return;
       }
 
-      // Send message directly to the user's chat ID
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
-      const userChatId = order.chatId; // Use the stored chat ID
+      const userChatId = order.chatId;
       
       const message = `
 ✅ *COURSE DELIVERY*
@@ -328,7 +300,6 @@ Thank you for your purchase!
         throw new Error(`Failed to send course link via Telegram: ${JSON.stringify(data)}`);
       }
       
-      // Also send confirmation to the channel
       const channelId = '@udemmmmp';
       const channelMessage = `
 📬 *COURSE DELIVERED*
@@ -346,11 +317,9 @@ Course has been delivered to the customer.
       
       await fetch(channelUrl);
       
-      // Make admin tab visible permanently after first successful delivery
       setShowAdminTab(true);
       localStorage.setItem('showAdminTab', 'true');
       
-      // Update order status to completed
       const updatedOrders = orders.map(o => 
         o.id === selectedOrderId ? { ...o, status: 'completed' as const } : o
       );
@@ -364,7 +333,6 @@ Course has been delivered to the customer.
         variant: "default",
       });
       
-      // Reset form
       setCourseLink('');
       setCustomMessage('');
       setSelectedOrderId(null);
@@ -379,7 +347,6 @@ Course has been delivered to the customer.
     }
   };
 
-  // Function to unlock admin tab with special access code
   const handleUnlockAdmin = () => {
     if (accessCode === ADMIN_ACCESS_CODE) {
       setShowAdminTab(true);
@@ -399,7 +366,6 @@ Course has been delivered to the customer.
     }
   };
 
-  // Telegram logout handler
   const handleTelegramLogout = () => {
     setTelegramUser(null);
     localStorage.removeItem('telegramUser');
@@ -410,7 +376,6 @@ Course has been delivered to the customer.
     });
   };
 
-  // Initialize by loading all courses on first render
   useEffect(() => {
     setCourses(ALL_COURSES);
   }, []);
@@ -427,7 +392,6 @@ Course has been delivered to the customer.
           </p>
         </div>
         
-        {/* Telegram login status */}
         {telegramUser ? (
           <div className="mb-6 flex justify-center">
             <div className="bg-white shadow-sm rounded-lg p-4 flex items-center space-x-4 max-w-md w-full">
@@ -464,7 +428,6 @@ Course has been delivered to the customer.
           </div>
         )}
         
-        {/* Hidden access code input - only for developer/admin access */}
         <div className="mb-4 max-w-xs mx-auto opacity-20 hover:opacity-100 transition-opacity">
           <div className="flex space-x-2">
             <Input

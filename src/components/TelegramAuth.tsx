@@ -39,6 +39,11 @@ declare global {
         };
         ready: () => void;
         close: () => void;
+        MainButton?: {
+          setText: (text: string) => void;
+          show: () => void;
+          onClick: (callback: () => void) => void;
+        };
       };
     };
     onTelegramAuth?: (user: TelegramUser) => void;
@@ -74,13 +79,54 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth, botName }) => {
           };
           
           console.log('Auto-logged in via Telegram WebApp:', telegramUser);
-          onAuth(telegramUser);
           
           // Store user data in localStorage
           localStorage.setItem('telegramUser', JSON.stringify(telegramUser));
+          
+          // Call onAuth with the user data
+          onAuth(telegramUser);
+          
+          // Set up Telegram MainButton if available
+          if (window.Telegram.WebApp?.MainButton) {
+            window.Telegram.WebApp.MainButton.setText('Browse Courses');
+            window.Telegram.WebApp.MainButton.show();
+            window.Telegram.WebApp.MainButton.onClick(() => {
+              console.log('Main button clicked');
+              // Any action you want on main button click
+            });
+          }
         }
       } else {
-        console.log('No user data available in Telegram WebApp');
+        console.log('No user data available in Telegram WebApp, trying fallback');
+        
+        // Fallback: Try to extract from query params if we're in WebApp but user data is not directly available
+        try {
+          const webAppData = window.Telegram.WebApp?.initData;
+          if (webAppData) {
+            const params = new URLSearchParams(webAppData);
+            const userStr = params.get('user');
+            if (userStr) {
+              const user = JSON.parse(decodeURIComponent(userStr));
+              const telegramUser: TelegramUser = {
+                id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                username: user.username,
+                photo_url: user.photo_url,
+                auth_date: Math.floor(Date.now() / 1000),
+                hash: 'webapp_auth' // Dummy hash since we're in WebApp
+              };
+              
+              console.log('Fallback login succeeded via Telegram WebApp data:', telegramUser);
+              localStorage.setItem('telegramUser', JSON.stringify(telegramUser));
+              onAuth(telegramUser);
+            } else {
+              console.log('No user data found in Telegram WebApp params');
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing WebApp data:', error);
+        }
       }
     } else {
       console.log('Not in Telegram WebApp, using regular auth flow');
@@ -100,14 +146,22 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth, botName }) => {
         
         // Handle callback when Telegram auth is completed
         window.onTelegramAuth = (user: TelegramUser) => {
-          console.log('Telegram user:', user);
+          console.log('Telegram login callback triggered with user:', user);
           onAuth(user);
           
           // Store user data in localStorage
           localStorage.setItem('telegramUser', JSON.stringify(user));
         };
         
+        // Add script to document
         document.head.appendChild(script);
+        
+        // Create widget container if it doesn't exist
+        if (!document.getElementById('telegram-login-container')) {
+          const container = document.createElement('div');
+          container.id = 'telegram-login-container';
+          document.body.appendChild(container);
+        }
       }
     }
     
@@ -132,6 +186,7 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth, botName }) => {
           hash: params.get('hash') || ''
         };
         
+        console.log('Found Telegram auth data in URL:', user);
         onAuth(user);
         localStorage.setItem('telegramUser', JSON.stringify(user));
         
@@ -165,13 +220,17 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ onAuth, botName }) => {
       );
     } else {
       console.error('Telegram Login widget not loaded');
-      alert('Telegram login is not available. Please try again later.');
+      alert('Telegram login is not available. Please try again later or open this app directly from Telegram.');
     }
   };
   
   // Don't show login button if running in Telegram WebApp
   if (window.Telegram?.WebApp) {
-    return null; // No need to show login UI when in WebApp
+    return (
+      <div className="text-center text-gray-500">
+        <p>Logging in automatically...</p>
+      </div>
+    );
   }
   
   return (

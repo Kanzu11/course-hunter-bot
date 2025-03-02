@@ -73,10 +73,10 @@ const CourseCard = ({
             {price ? (
               <div className="flex flex-col">
                 <span className="text-sm text-gray-500 line-through">${price.toFixed(2)} USD</span>
-                <span className="text-lg font-bold text-primary">300 ETB</span>
+                <span className="text-lg font-bold text-primary">299 ETB</span>
               </div>
             ) : (
-              <span className="text-lg font-bold text-primary">300 ETB</span>
+              <span className="text-lg font-bold text-primary">299 ETB</span>
             )}
             <Button
               onClick={onPurchase}
