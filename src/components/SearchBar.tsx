@@ -5,9 +5,11 @@ import { Input } from '@/components/ui/input';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
+  placeholder?: string;
+  isLoading?: boolean;
 }
 
-const SearchBar = ({ onSearch }: SearchBarProps) => {
+const SearchBar = ({ onSearch, placeholder = "Search for courses...", isLoading = false }: SearchBarProps) => {
   const [query, setQuery] = useState('');
   
   // Using useCallback to memoize the debounce function
@@ -17,7 +19,7 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
       clearTimeout(timer);
       timer = setTimeout(() => {
         onSearch(value);
-      }, 500); // 500ms debounce
+      }, 300); // Reduced to 300ms for faster response
     };
   }, [onSearch]);
 
@@ -41,17 +43,19 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
       <div className="relative">
         <Input
           type="text"
-          placeholder="Search for courses..."
+          placeholder={placeholder}
           className="w-full pl-12 pr-24 py-3 rounded-lg bg-white shadow-sm border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
           value={query}
           onChange={handleChange}
+          disabled={isLoading}
         />
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
         <button 
           type="submit" 
-          className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary text-white px-4 py-1 rounded-md text-sm hover:bg-primary/90 transition-colors"
+          className="absolute right-4 top-1/2 -translate-y-1/2 bg-primary text-white px-4 py-1 rounded-md text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={isLoading}
         >
-          Search
+          {isLoading ? "Searching..." : "Search"}
         </button>
       </div>
     </form>
