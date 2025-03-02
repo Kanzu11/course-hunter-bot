@@ -17,7 +17,7 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
       clearTimeout(timer);
       timer = setTimeout(() => {
         onSearch(value);
-      }, 500); // Increased to 500ms to reduce frequency of searches
+      }, 500); // 500ms debounce
     };
   }, [onSearch]);
 
@@ -42,7 +42,7 @@ const SearchBar = ({ onSearch }: SearchBarProps) => {
         <Input
           type="text"
           placeholder="Search for courses..."
-          className="w-full pl-12 pr-4 py-3 rounded-lg bg-white shadow-sm border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+          className="w-full pl-12 pr-24 py-3 rounded-lg bg-white shadow-sm border border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
           value={query}
           onChange={handleChange}
         />

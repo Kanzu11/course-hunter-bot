@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import SearchBar from '@/components/SearchBar';
 import CourseCard from '@/components/CourseCard';
@@ -184,10 +183,29 @@ const MOCK_COURSES: UdemyCourse[] = [
   }
 ];
 
+// Add the new Python course
+const ADDITIONAL_COURSES: UdemyCourse[] = [
+  {
+    id: 13,
+    title: "100 Days of Code: The Complete Python Pro Bootcamp",
+    url: "https://www.udemy.com/course/100-days-of-code/",
+    description: "Master Python by building 100 projects in 100 days. Learn data science, automation, build websites, games and apps!",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/2776760_f176_10.jpg",
+    price: "$89.99",
+    price_detail: {
+      amount: 89.99,
+      currency: "USD"
+    }
+  }
+];
+
+// Combine the courses
+const ALL_COURSES = [...MOCK_COURSES, ...ADDITIONAL_COURSES];
+
 const Index = () => {
   // State variables with stable initialization
   const [loading, setLoading] = useState(false);
-  const [courses, setCourses] = useState<UdemyCourse[]>(MOCK_COURSES);
+  const [courses, setCourses] = useState<UdemyCourse[]>(ALL_COURSES);
   const [purchaseLoading, setPurchaseLoading] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('isAdmin') === 'true');
   const [adminPassword, setAdminPassword] = useState('');
@@ -200,10 +218,9 @@ const Index = () => {
   const [showAdminTab, setShowAdminTab] = useState(() => localStorage.getItem('showAdminTab') === 'true');
   const [accessCode, setAccessCode] = useState('');
   const [hasPurchased, setHasPurchased] = useState(() => localStorage.getItem('hasPurchased') === 'true');
-  const [userChatId, setUserChatId] = useState('');
   const { toast } = useToast();
 
-  // Function to search courses from our mock data - without setting loading state repeatedly
+  // Improved search function with better matching
   const handleSearch = (query: string) => {
     if (loading) return; // Prevent multiple concurrent searches
     
@@ -213,14 +230,18 @@ const Index = () => {
     setTimeout(() => {
       if (!query.trim()) {
         // If query is empty, show all courses
-        setCourses(MOCK_COURSES);
+        setCourses(ALL_COURSES);
       } else {
-        // Filter courses based on query
-        const filteredCourses = MOCK_COURSES.filter(course => {
-          const searchTerm = query.toLowerCase();
-          return (
-            course.title.toLowerCase().includes(searchTerm) ||
-            course.description.toLowerCase().includes(searchTerm)
+        // Filter courses with improved search logic
+        const searchTerm = query.toLowerCase();
+        const filteredCourses = ALL_COURSES.filter(course => {
+          const titleLower = course.title.toLowerCase();
+          const descLower = course.description.toLowerCase();
+          
+          // Check if any word from the search query appears in the title or description
+          const searchWords = searchTerm.split(' ');
+          return searchWords.some(word => 
+            titleLower.includes(word) || descLower.includes(word)
           );
         });
         
@@ -231,7 +252,7 @@ const Index = () => {
     }, 300);
   };
 
-  // Handle purchase process
+  // Handle purchase process - improved to not ask for Telegram ID
   const handlePurchase = async (courseId: number) => {
     if (purchaseLoading !== null) return; // Prevent multiple concurrent purchases
     
@@ -239,34 +260,21 @@ const Index = () => {
       setPurchaseLoading(courseId);
       
       // Find the course
-      const course = MOCK_COURSES.find(c => c.id === courseId);
+      const course = ALL_COURSES.find(c => c.id === courseId);
       if (!course) {
         throw new Error('Course not found');
-      }
-      
-      // Prompt user for their Telegram chat ID
-      const userInputChatId = prompt("Please enter your Telegram chat ID to receive the course:");
-      
-      if (!userInputChatId) {
-        toast({
-          title: "Order Cancelled",
-          description: "You need to provide a Telegram chat ID to complete your order.",
-          variant: "destructive",
-        });
-        return;
       }
       
       // Create a unique order ID
       const orderId = `ORDER-${Date.now()}`;
       
-      // Create a new order with chat ID
+      // Create a new order (without asking for chat ID)
       const newOrder: Order = {
         id: orderId,
         courseId: course.id,
         courseTitle: course.title,
         orderDate: new Date().toLocaleString(),
-        status: 'pending',
-        chatId: userInputChatId
+        status: 'pending'
       };
       
       // Save order to localStorage
@@ -297,9 +305,8 @@ const Index = () => {
 🆔 *Order ID:* ${orderId}
 💰 *Price:* 300 ETB
 ⏰ *Order Time:* ${new Date().toLocaleString()}
-👤 *User Chat ID:* ${userInputChatId}
 
-Order is waiting for processing.
+Order is waiting for processing. Customer will receive course via our bot @udemmy_official_bot
 `;
       
       // Encode message for URL
@@ -316,10 +323,10 @@ Order is waiting for processing.
         throw new Error(`Failed to send notification to Telegram: ${JSON.stringify(data)}`);
       }
       
-      // Show success message
+      // Show success message with instructions for the user
       toast({
         title: "Order Placed Successfully!",
-        description: `Your order for "${course.title}" has been placed. We'll send you the course details to your Telegram.`,
+        description: `Your order for "${course.title}" has been placed. Please message @udemmy_official_bot on Telegram to receive your course.`,
         variant: "default",
       });
       
@@ -493,11 +500,9 @@ Course has been delivered to the customer.
     }
   };
 
-  // Load initial data only once on component mount
+  // Initialize by loading all courses on first render
   useEffect(() => {
-    // All state is initialized with lazy initializers now, so no additional loading needed
-    
-    // This effect should only run once on mount
+    setCourses(ALL_COURSES);
   }, []);
 
   return (
