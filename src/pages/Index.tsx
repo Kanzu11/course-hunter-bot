@@ -1,12 +1,26 @@
+
 import React, { useState, useEffect } from 'react';
 import SearchBar from '@/components/SearchBar';
 import CourseCard from '@/components/CourseCard';
 import LoadingCard from '@/components/LoadingCard';
+import TelegramAuth from '@/components/TelegramAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+
+// Type for Telegram user
+interface TelegramUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
 
 // Type for mock courses
 interface UdemyCourse {
@@ -30,6 +44,8 @@ interface Order {
   orderDate: string;
   status: 'pending' | 'completed';
   chatId?: string; // Add chat ID for Telegram messaging
+  customerId?: number; // Add customer Telegram ID
+  customerName?: string; // Add customer name
 }
 
 // The secure admin access code - this should ideally be hashed in a real app
@@ -214,10 +230,15 @@ const Index = () => {
     return storedOrders ? JSON.parse(storedOrders) : [];
   });
   const [courseLink, setCourseLink] = useState('');
+  const [customMessage, setCustomMessage] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [showAdminTab, setShowAdminTab] = useState(() => localStorage.getItem('showAdminTab') === 'true');
   const [accessCode, setAccessCode] = useState('');
   const [hasPurchased, setHasPurchased] = useState(() => localStorage.getItem('hasPurchased') === 'true');
+  const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(() => {
+    const storedUser = localStorage.getItem('telegramUser');
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
   const { toast } = useToast();
 
   // Improved search function with better matching
@@ -252,12 +273,38 @@ const Index = () => {
     }, 300);
   };
 
-  // Handle purchase process - improved to not ask for Telegram ID
+  // Handle Telegram authentication
+  const handleTelegramAuth = (user: TelegramUser) => {
+    console.log('Authenticated with Telegram:', user);
+    setTelegramUser(user);
+    
+    // Store user in localStorage
+    localStorage.setItem('telegramUser', JSON.stringify(user));
+    
+    toast({
+      title: "Telegram Login Successful",
+      description: `Welcome, ${user.first_name}! You can now purchase courses.`,
+      variant: "default",
+    });
+  };
+
+  // Handle purchase process - using Telegram data
   const handlePurchase = async (courseId: number) => {
     if (purchaseLoading !== null) return; // Prevent multiple concurrent purchases
     
     try {
       setPurchaseLoading(courseId);
+      
+      // Check if user is logged in with Telegram
+      if (!telegramUser) {
+        toast({
+          title: "Login Required",
+          description: "Please login with Telegram before purchasing a course.",
+          variant: "destructive",
+        });
+        setPurchaseLoading(null);
+        return;
+      }
       
       // Find the course
       const course = ALL_COURSES.find(c => c.id === courseId);
@@ -268,13 +315,16 @@ const Index = () => {
       // Create a unique order ID
       const orderId = `ORDER-${Date.now()}`;
       
-      // Create a new order (without asking for chat ID)
+      // Create a new order with Telegram user data
       const newOrder: Order = {
         id: orderId,
         courseId: course.id,
         courseTitle: course.title,
         orderDate: new Date().toLocaleString(),
-        status: 'pending'
+        status: 'pending',
+        chatId: telegramUser.id.toString(),
+        customerId: telegramUser.id,
+        customerName: `${telegramUser.first_name} ${telegramUser.last_name || ''}`
       };
       
       // Save order to localStorage
@@ -305,8 +355,11 @@ const Index = () => {
 🆔 *Order ID:* ${orderId}
 💰 *Price:* 300 ETB
 ⏰ *Order Time:* ${new Date().toLocaleString()}
+👤 *Customer:* ${telegramUser.first_name} ${telegramUser.last_name || ''}
+🆔 *Telegram ID:* ${telegramUser.id}
+${telegramUser.username ? `👤 *Username:* @${telegramUser.username}` : ''}
 
-Order is waiting for processing. Customer will receive course via our bot @udemmy_official_bot
+Order is waiting for processing. Course will be sent directly to the customer.
 `;
       
       // Encode message for URL
@@ -323,10 +376,28 @@ Order is waiting for processing. Customer will receive course via our bot @udemm
         throw new Error(`Failed to send notification to Telegram: ${JSON.stringify(data)}`);
       }
       
+      // Also notify the customer
+      const customerMessage = `
+🎉 *Order Placed Successfully!*
+
+Thank you for your order with CourseHunter.
+
+📚 *Course:* ${course.title}
+🆔 *Order ID:* ${orderId}
+💰 *Price:* 300 ETB
+
+Your course download link will be sent to you directly in this chat once the order is processed. Please be patient.
+`;
+      
+      const encodedCustomerMessage = encodeURIComponent(customerMessage);
+      const customerUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${telegramUser.id}&text=${encodedCustomerMessage}&parse_mode=Markdown`;
+      
+      await fetch(customerUrl);
+      
       // Show success message with instructions for the user
       toast({
         title: "Order Placed Successfully!",
-        description: `Your order for "${course.title}" has been placed. Please message @udemmy_official_bot on Telegram to receive your course.`,
+        description: `Your order for "${course.title}" has been placed. You will receive your course via Telegram soon.`,
         variant: "default",
       });
       
@@ -380,7 +451,7 @@ Order is waiting for processing. Customer will receive course via our bot @udemm
     });
   };
 
-  // Send course link via Telegram bot - Updated to use direct user chat ID
+  // Send course link via Telegram bot - Updated to include custom message
   const handleSendCourseLink = async () => {
     if (!selectedOrderId || !courseLink.trim()) {
       toast({
@@ -400,7 +471,7 @@ Order is waiting for processing. Customer will receive course via our bot @udemm
       if (!order.chatId) {
         toast({
           title: "Error",
-          description: "This order doesn't have a chat ID. Please ask the customer for their Telegram chat ID.",
+          description: "This order doesn't have a chat ID. The customer may need to log in with Telegram.",
           variant: "destructive",
         });
         return;
@@ -416,6 +487,8 @@ Order is waiting for processing. Customer will receive course via our bot @udemm
 🆔 *Order ID:* ${order.id}
 📚 *Course:* ${order.courseTitle}
 🔗 *Download Link:* ${courseLink}
+
+${customMessage ? `📝 *Message:* ${customMessage}` : ''}
 
 Thank you for your purchase!
 `;
@@ -438,6 +511,7 @@ Thank you for your purchase!
 
 🆔 *Order ID:* ${order.id}
 📚 *Course:* ${order.courseTitle}
+👤 *Customer:* ${order.customerName || 'Unknown'}
 👤 *User Chat ID:* ${order.chatId}
 
 Course has been delivered to the customer.
@@ -468,6 +542,7 @@ Course has been delivered to the customer.
       
       // Reset form
       setCourseLink('');
+      setCustomMessage('');
       setSelectedOrderId(null);
       
     } catch (error) {
@@ -500,6 +575,17 @@ Course has been delivered to the customer.
     }
   };
 
+  // Telegram logout handler
+  const handleTelegramLogout = () => {
+    setTelegramUser(null);
+    localStorage.removeItem('telegramUser');
+    toast({
+      title: "Logged Out",
+      description: "You have been logged out of your Telegram account.",
+      variant: "default",
+    });
+  };
+
   // Initialize by loading all courses on first render
   useEffect(() => {
     setCourses(ALL_COURSES);
@@ -516,6 +602,43 @@ Course has been delivered to the customer.
             Find your next learning adventure at an affordable price
           </p>
         </div>
+        
+        {/* Telegram login status */}
+        {telegramUser ? (
+          <div className="mb-6 flex justify-center">
+            <div className="bg-white shadow-sm rounded-lg p-4 flex items-center space-x-4 max-w-md w-full">
+              {telegramUser.photo_url && (
+                <img 
+                  src={telegramUser.photo_url} 
+                  alt="Profile" 
+                  className="w-10 h-10 rounded-full"
+                />
+              )}
+              <div className="flex-1">
+                <p className="font-medium">
+                  Welcome, {telegramUser.first_name} {telegramUser.last_name || ''}!
+                </p>
+                <p className="text-sm text-gray-500">
+                  {telegramUser.username ? `@${telegramUser.username}` : `ID: ${telegramUser.id}`}
+                </p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleTelegramLogout}
+              >
+                Logout
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-6 flex justify-center">
+            <Card className="p-4 max-w-md w-full">
+              <h3 className="text-lg font-medium text-center mb-4">Login to Purchase Courses</h3>
+              <TelegramAuth onAuth={handleTelegramAuth} botName="udemmy_official_bot" />
+            </Card>
+          </div>
+        )}
         
         {/* Hidden access code input - only for developer/admin access */}
         <div className="mb-4 max-w-xs mx-auto opacity-20 hover:opacity-100 transition-opacity">
@@ -564,10 +687,10 @@ Course has been delivered to the customer.
               ) : (
                 <div className="col-span-3 text-center py-10">
                   <h3 className="text-xl font-medium text-gray-700">
-                    {loading ? 'Searching courses...' : 'Search for courses'}
+                    {loading ? 'Searching courses...' : 'No courses found'}
                   </h3>
                   <p className="text-gray-500 mt-2">
-                    Enter a search term to find courses
+                    Try another search term or browse all courses
                   </p>
                 </div>
               )}
@@ -577,7 +700,7 @@ Course has been delivered to the customer.
               <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <h3 className="text-lg font-medium text-green-800">Thank you for your order!</h3>
                 <p className="text-green-700">
-                  We're processing your request. You'll receive your course download link on Telegram.
+                  We're processing your request. You'll receive your course download link directly on Telegram.
                 </p>
               </div>
             )}
@@ -631,7 +754,7 @@ Course has been delivered to the customer.
                           <option value="">-- Select an order --</option>
                           {orders.map(order => (
                             <option key={order.id} value={order.id}>
-                              {order.id} - {order.courseTitle} {order.chatId ? `(Chat ID: ${order.chatId})` : ''}
+                              {order.id} - {order.courseTitle} ({order.customerName || order.chatId || 'Unknown user'})
                             </option>
                           ))}
                         </select>
@@ -650,6 +773,19 @@ Course has been delivered to the customer.
                         />
                       </div>
                       
+                      <div className="space-y-2">
+                        <label htmlFor="customMessage" className="text-sm font-medium">
+                          Custom Message (Optional)
+                        </label>
+                        <Textarea
+                          id="customMessage"
+                          value={customMessage}
+                          onChange={(e) => setCustomMessage(e.target.value)}
+                          placeholder="Add a custom message to send with the course link"
+                          rows={3}
+                        />
+                      </div>
+                      
                       <Button onClick={handleSendCourseLink} className="w-full">
                         Send Link to Customer
                       </Button>
@@ -664,16 +800,20 @@ Course has been delivered to the customer.
                           <thead>
                             <tr className="border-b">
                               <th className="py-2 px-4 text-left">Order ID</th>
+                              <th className="py-2 px-4 text-left">Customer</th>
                               <th className="py-2 px-4 text-left">Course</th>
                               <th className="py-2 px-4 text-left">Date</th>
                               <th className="py-2 px-4 text-left">Status</th>
-                              <th className="py-2 px-4 text-left">Chat ID</th>
                             </tr>
                           </thead>
                           <tbody>
                             {orders.map(order => (
                               <tr key={order.id} className="border-b hover:bg-gray-50">
                                 <td className="py-2 px-4">{order.id}</td>
+                                <td className="py-2 px-4">
+                                  {order.customerName || 'Unknown'}
+                                  {order.chatId && <div className="text-xs text-gray-500">ID: {order.chatId}</div>}
+                                </td>
                                 <td className="py-2 px-4">{order.courseTitle}</td>
                                 <td className="py-2 px-4">{order.orderDate}</td>
                                 <td className="py-2 px-4">
@@ -685,7 +825,6 @@ Course has been delivered to the customer.
                                     {order.status === 'completed' ? 'Delivered' : 'Pending'}
                                   </span>
                                 </td>
-                                <td className="py-2 px-4">{order.chatId || 'Not provided'}</td>
                               </tr>
                             ))}
                           </tbody>
