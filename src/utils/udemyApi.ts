@@ -571,5 +571,67 @@ export const ALL_COURSES: UdemyCourse[] = [
     rating: 4.5,
     num_reviews: 5287,
     instructor: "Alexander Oni"
-  }
-];
+  },
+  {
+    id: 31,
+    title: "The Complete Android App Development Course",
+    url: "https://www.udemy.com/course/complete-android-developer-course/",
+    description: "Learn to build Android apps using Java and Kotlin, including APIs, Firebase, and the latest Android development practices.",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/892102_963d_3.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    },
+    rating: 4.5,
+    num_reviews: 35217,
+    instructor: "Rob Percival"
+  },
+  {
+    id: 32,
+    title: "iOS 16 & Swift 5 - The Complete iOS App Development Course",
+    url: "https://www.udemy.com/course/ios-13-app-development-bootcamp/",
+    description: "Learn iOS app development with Swift 5 and build 25+ real-world applications. Includes ARKit, CoreML and more.",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/1778502_f4b9_12.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    },
+    rating: 4.7,
+    num_reviews: 67483,
+    instructor: "Dr. Angela Yu"
+  },
+  {
+    id: 33,
+    title: "The Complete Unity Game Development Course",
+    url: "https://www.udemy.com/course/the-complete-unity-developer/",
+    description: "Learn C# by developing 2D & 3D games with this comprehensive game development course. Includes Unity basics to advanced concepts.",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/673744_e2c0_6.jpg",
+    price: "$94.99",
+    price_detail: {
+      amount: 94.99,
+      currency: "USD"
+    },
+    rating: 4.6,
+    num_reviews: 62314,
+    instructor: "Ben Tristem"
+  },
+  {
+    id: 34,
+    title: "Introduction to Financial Accounting",
+    url: "https://www.udemy.com/course/introduction-to-financial-accounting/",
+    description: "Learn the basics of financial accounting, including balance sheets, income statements, and financial analysis techniques.",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/1378166_6198_2.jpg",
+    price: "$84.99",
+    price_detail: {
+      amount: 84.99,
+      currency: "USD"
+    },
+    rating: 4.6,
+    num_reviews: 18743,
+    instructor: "Prof. Brian Kim"
+  },
+  {
+    id: 35,
+    title: "The
