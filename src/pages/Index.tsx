@@ -277,6 +277,8 @@ Your course download link will be sent to you directly in this chat once the ord
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
       const userChatId = order.chatId;
       
+      console.log("Sending course link to chat ID:", userChatId);
+      
       const message = `
 ✅ *COURSE DELIVERY*
 
@@ -292,14 +294,20 @@ Thank you for your purchase!
       const encodedMessage = encodeURIComponent(message);
       const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${userChatId}&text=${encodedMessage}&parse_mode=Markdown`;
       
+      console.log("Sending request to Telegram API:", telegramUrl);
+      
       const response = await fetch(telegramUrl);
+      console.log("Telegram API response status:", response.status);
+      
       const data = await response.json();
+      console.log("Telegram API response data:", data);
       
       if (!data.ok) {
         console.error('Telegram API error:', data);
-        throw new Error(`Failed to send course link via Telegram: ${JSON.stringify(data)}`);
+        throw new Error(`Failed to send course link via Telegram: ${data.description || JSON.stringify(data)}`);
       }
       
+      // Only proceed if the first message was sent successfully
       const channelId = '@udemmmmp';
       const channelMessage = `
 📬 *COURSE DELIVERED*
@@ -315,7 +323,15 @@ Course has been delivered to the customer.
       const encodedChannelMessage = encodeURIComponent(channelMessage);
       const channelUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${channelId}&text=${encodedChannelMessage}&parse_mode=Markdown`;
       
-      await fetch(channelUrl);
+      console.log("Sending notification to channel:", channelId);
+      
+      const channelResponse = await fetch(channelUrl);
+      const channelData = await channelResponse.json();
+      
+      if (!channelData.ok) {
+        console.warn('Warning: Failed to send notification to channel:', channelData);
+        // Continue even if channel notification fails
+      }
       
       setShowAdminTab(true);
       localStorage.setItem('showAdminTab', 'true');
@@ -339,9 +355,16 @@ Course has been delivered to the customer.
       
     } catch (error) {
       console.error('Error sending course link:', error);
+      
+      // Provide more detailed error message
+      let errorMessage = "Failed to send course link. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = `${errorMessage} Error: ${error.message}`;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to send course link. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

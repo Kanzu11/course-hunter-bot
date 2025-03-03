@@ -70,14 +70,7 @@ const CourseCard = ({
         <p className="text-sm text-gray-600 line-clamp-3 mb-4">{description}</p>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            {price ? (
-              <div className="flex flex-col">
-                <span className="text-sm text-gray-500 line-through">${price.toFixed(2)} USD</span>
-                <span className="text-lg font-bold text-primary">299 ETB</span>
-              </div>
-            ) : (
-              <span className="text-lg font-bold text-primary">299 ETB</span>
-            )}
+            <span className="text-lg font-bold text-primary">299 ETB</span>
             <Button
               onClick={onPurchase}
               disabled={isLoading}
