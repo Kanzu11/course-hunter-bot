@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import SearchBar from '@/components/SearchBar';
 import CourseCard from '@/components/CourseCard';
 import LoadingCard from '@/components/LoadingCard';
-import TelegramAuth from '@/components/TelegramAuth';
+import TelegramUsernameInput from '@/components/TelegramAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -12,13 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { searchUdemyCourses, ALL_COURSES } from '@/utils/udemyApi';
 
 interface TelegramUser {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
+  username: string;
+  id?: number;
 }
 
 interface Order {
@@ -27,9 +22,7 @@ interface Order {
   courseTitle: string;
   orderDate: string;
   status: 'pending' | 'completed';
-  chatId?: string;
-  customerId?: number;
-  customerName?: string;
+  telegramUsername: string;
 }
 
 const ADMIN_ACCESS_CODE = 'admin-kanzed-2024';
@@ -91,15 +84,16 @@ const Index = () => {
     }
   };
 
-  const handleTelegramAuth = (user: TelegramUser) => {
-    console.log('Authenticated with Telegram:', user);
+  const handleTelegramUsernameSubmit = (username: string) => {
+    console.log('Telegram username submitted:', username);
+    const user: TelegramUser = { username };
     setTelegramUser(user);
     
     localStorage.setItem('telegramUser', JSON.stringify(user));
     
     toast({
-      title: "Telegram Login Successful",
-      description: `Welcome, ${user.first_name}! You can now purchase courses.`,
+      title: "Username Saved",
+      description: `Welcome, @${username}! You can now purchase courses.`,
       variant: "default",
     });
   };
@@ -112,8 +106,8 @@ const Index = () => {
       
       if (!telegramUser) {
         toast({
-          title: "Login Required",
-          description: "Please login with Telegram before purchasing a course.",
+          title: "Username Required",
+          description: "Please enter your Telegram username before purchasing a course.",
           variant: "destructive",
         });
         setPurchaseLoading(null);
@@ -133,9 +127,7 @@ const Index = () => {
         courseTitle: course.title,
         orderDate: new Date().toLocaleString(),
         status: 'pending',
-        chatId: telegramUser.id.toString(),
-        customerId: telegramUser.id,
-        customerName: `${telegramUser.first_name} ${telegramUser.last_name || ''}`
+        telegramUsername: telegramUser.username
       };
       
       const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
@@ -161,9 +153,7 @@ const Index = () => {
 🆔 *Order ID:* ${orderId}
 💰 *Price:* 299 ETB
 ⏰ *Order Time:* ${new Date().toLocaleString()}
-👤 *Customer:* ${telegramUser.first_name} ${telegramUser.last_name || ''}
-🆔 *Telegram ID:* ${telegramUser.id}
-${telegramUser.username ? `👤 *Username:* @${telegramUser.username}` : ''}
+👤 *Telegram:* @${telegramUser.username}
 
 Order is waiting for processing. Course will be sent directly to the customer.
 `;
@@ -179,23 +169,6 @@ Order is waiting for processing. Course will be sent directly to the customer.
         console.error('Telegram API error:', data);
         throw new Error(`Failed to send notification to Telegram: ${JSON.stringify(data)}`);
       }
-      
-      const customerMessage = `
-🎉 *Order Placed Successfully!*
-
-Thank you for your order with CourseHunter.
-
-📚 *Course:* ${course.title}
-🆔 *Order ID:* ${orderId}
-💰 *Price:* 299 ETB
-
-Your course download link will be sent to you directly in this chat once the order is processed. Please be patient.
-`;
-      
-      const encodedCustomerMessage = encodeURIComponent(customerMessage);
-      const customerUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${telegramUser.id}&text=${encodedCustomerMessage}&parse_mode=Markdown`;
-      
-      await fetch(customerUrl);
       
       toast({
         title: "Order Placed Successfully!",
@@ -265,22 +238,30 @@ Your course download link will be sent to you directly in this chat once the ord
         throw new Error('Order not found');
       }
 
-      if (!order.chatId) {
+      if (!order.telegramUsername) {
         toast({
           title: "Error",
-          description: "This order doesn't have a chat ID. The customer may need to log in with Telegram.",
+          description: "This order doesn't have a Telegram username.",
           variant: "destructive",
         });
         return;
       }
 
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
-      const userChatId = order.chatId;
+      const channelId = '@udemmmmp';
       
-      console.log("Sending course link to chat ID:", userChatId);
-      
-      const message = `
-✅ *COURSE DELIVERY*
+      // Send notification to the channel about completing the order
+      const channelMessage = `
+📬 *COURSE DELIVERED*
+
+🆔 *Order ID:* ${order.id}
+📚 *Course:* ${order.courseTitle}
+👤 *Customer:* @${order.telegramUsername}
+
+Course link has been prepared and ready to send to the customer.
+Please forward this message to @${order.telegramUsername}:
+
+✅ *YOUR COURSE IS READY!*
 
 🆔 *Order ID:* ${order.id}
 📚 *Course:* ${order.courseTitle}
@@ -289,35 +270,6 @@ Your course download link will be sent to you directly in this chat once the ord
 ${customMessage ? `📝 *Message:* ${customMessage}` : ''}
 
 Thank you for your purchase!
-`;
-      
-      const encodedMessage = encodeURIComponent(message);
-      const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${userChatId}&text=${encodedMessage}&parse_mode=Markdown`;
-      
-      console.log("Sending request to Telegram API:", telegramUrl);
-      
-      const response = await fetch(telegramUrl);
-      console.log("Telegram API response status:", response.status);
-      
-      const data = await response.json();
-      console.log("Telegram API response data:", data);
-      
-      if (!data.ok) {
-        console.error('Telegram API error:', data);
-        throw new Error(`Failed to send course link via Telegram: ${data.description || JSON.stringify(data)}`);
-      }
-      
-      // Only proceed if the first message was sent successfully
-      const channelId = '@udemmmmp';
-      const channelMessage = `
-📬 *COURSE DELIVERED*
-
-🆔 *Order ID:* ${order.id}
-📚 *Course:* ${order.courseTitle}
-👤 *Customer:* ${order.customerName || 'Unknown'}
-👤 *User Chat ID:* ${order.chatId}
-
-Course has been delivered to the customer.
 `;
       
       const encodedChannelMessage = encodeURIComponent(channelMessage);
@@ -329,8 +281,8 @@ Course has been delivered to the customer.
       const channelData = await channelResponse.json();
       
       if (!channelData.ok) {
-        console.warn('Warning: Failed to send notification to channel:', channelData);
-        // Continue even if channel notification fails
+        console.error('Telegram API error:', channelData);
+        throw new Error(`Failed to send notification: ${channelData.description || JSON.stringify(channelData)}`);
       }
       
       setShowAdminTab(true);
@@ -344,8 +296,8 @@ Course has been delivered to the customer.
       localStorage.setItem('orders', JSON.stringify(updatedOrders));
       
       toast({
-        title: "Course Link Sent",
-        description: "The course download link has been sent successfully to the customer's Telegram.",
+        title: "Course Ready",
+        description: "A notification with the course link has been sent to the admin channel. Please forward it to the customer.",
         variant: "default",
       });
       
@@ -356,7 +308,6 @@ Course has been delivered to the customer.
     } catch (error) {
       console.error('Error sending course link:', error);
       
-      // Provide more detailed error message
       let errorMessage = "Failed to send course link. Please try again.";
       if (error instanceof Error) {
         errorMessage = `${errorMessage} Error: ${error.message}`;
@@ -393,8 +344,8 @@ Course has been delivered to the customer.
     setTelegramUser(null);
     localStorage.removeItem('telegramUser');
     toast({
-      title: "Logged Out",
-      description: "You have been logged out of your Telegram account.",
+      title: "Username Cleared",
+      description: "Your Telegram username has been cleared.",
       variant: "default",
     });
   };
@@ -418,19 +369,9 @@ Course has been delivered to the customer.
         {telegramUser ? (
           <div className="mb-6 flex justify-center">
             <div className="bg-white shadow-sm rounded-lg p-4 flex items-center space-x-4 max-w-md w-full">
-              {telegramUser.photo_url && (
-                <img 
-                  src={telegramUser.photo_url} 
-                  alt="Profile" 
-                  className="w-10 h-10 rounded-full"
-                />
-              )}
               <div className="flex-1">
                 <p className="font-medium">
-                  Welcome, {telegramUser.first_name} {telegramUser.last_name || ''}!
-                </p>
-                <p className="text-sm text-gray-500">
-                  {telegramUser.username ? `@${telegramUser.username}` : `ID: ${telegramUser.id}`}
+                  Welcome, @{telegramUser.username}!
                 </p>
               </div>
               <Button 
@@ -438,15 +379,15 @@ Course has been delivered to the customer.
                 size="sm" 
                 onClick={handleTelegramLogout}
               >
-                Logout
+                Change Username
               </Button>
             </div>
           </div>
         ) : (
           <div className="mb-6 flex justify-center">
             <Card className="p-4 max-w-md w-full">
-              <h3 className="text-lg font-medium text-center mb-4">Login to Purchase Courses</h3>
-              <TelegramAuth onAuth={handleTelegramAuth} botName="udemmy_official_bot" />
+              <h3 className="text-lg font-medium text-center mb-4">Enter Your Telegram Username</h3>
+              <TelegramUsernameInput onSubmit={handleTelegramUsernameSubmit} />
             </Card>
           </div>
         )}
@@ -571,7 +512,7 @@ Course has been delivered to the customer.
                           <option value="">-- Select an order --</option>
                           {orders.map(order => (
                             <option key={order.id} value={order.id}>
-                              {order.id} - {order.courseTitle} ({order.customerName || order.chatId || 'Unknown user'})
+                              {order.id} - {order.courseTitle} (@{order.telegramUsername})
                             </option>
                           ))}
                         </select>
@@ -628,8 +569,7 @@ Course has been delivered to the customer.
                               <tr key={order.id} className="border-b hover:bg-gray-50">
                                 <td className="py-2 px-4">{order.id}</td>
                                 <td className="py-2 px-4">
-                                  {order.customerName || 'Unknown'}
-                                  {order.chatId && <div className="text-xs text-gray-500">ID: {order.chatId}</div>}
+                                  @{order.telegramUsername}
                                 </td>
                                 <td className="py-2 px-4">{order.courseTitle}</td>
                                 <td className="py-2 px-4">{order.orderDate}</td>
