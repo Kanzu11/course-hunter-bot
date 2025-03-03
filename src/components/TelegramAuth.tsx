@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -7,9 +7,48 @@ interface TelegramUsernameProps {
   onSubmit: (username: string) => void;
 }
 
+// Define telegram webapp interface
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp?: {
+        initData: string;
+        initDataUnsafe: {
+          user?: {
+            username?: string;
+            id?: number;
+            first_name?: string;
+            last_name?: string;
+          };
+        };
+      };
+    };
+  }
+}
+
 const TelegramUsernameInput: React.FC<TelegramUsernameProps> = ({ onSubmit }) => {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Try to get username from Telegram WebApp
+    try {
+      if (window.Telegram?.WebApp?.initDataUnsafe?.user?.username) {
+        const telegramUsername = window.Telegram.WebApp.initDataUnsafe.user.username;
+        console.log('Got Telegram username automatically:', telegramUsername);
+        onSubmit(telegramUsername);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Could not get Telegram username automatically. Falling back to manual input.');
+      setLoading(false);
+    } catch (err) {
+      console.error('Error accessing Telegram WebApp:', err);
+      setLoading(false);
+    }
+  }, [onSubmit]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +74,14 @@ const TelegramUsernameInput: React.FC<TelegramUsernameProps> = ({ onSubmit }) =>
     setError('');
     onSubmit(formattedUsername);
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center p-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0088cc]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center space-y-4">
