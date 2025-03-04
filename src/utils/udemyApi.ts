@@ -637,6 +637,14 @@ export const ALL_COURSES: UdemyCourse[] = [
     title: "The Ultimate PHP, Laravel, CSS & Sass! Build Modern Responsive Websites",
     url: "https://www.udemy.com/course/ultimate-php-laravel-css-sass-build-modern-responsive-websites/",
     description: "Learn PHP, Laravel, CSS, and Sass to build modern responsive websites.",
-    image_480x270: "https://img-c.udemycdn.com/course/480x270/4352768_6c1c_2.jpg"
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/4352768_6c1c_2.jpg",
+    price: "$89.99",
+    price_detail: {
+      amount: 89.99,
+      currency: "USD"
+    },
+    rating: 4.5,
+    num_reviews: 8723,
+    instructor: "Brad Traversy"
   }
 ];
