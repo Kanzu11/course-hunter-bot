@@ -25,7 +25,19 @@ interface Order {
   telegramUsername: string;
 }
 
+interface PurchaseHistory {
+  username: string;
+  purchases: {
+    timestamp: number;
+    courseId: number;
+  }[];
+  cooldownUntil?: number;
+}
+
 const ADMIN_ACCESS_CODE = 'admin-kanzed-2024';
+const MAX_PURCHASES = 6;
+const TIME_WINDOW_MS = 10 * 60 * 1000; // 10 minutes in milliseconds
+const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 const Index = () => {
   const [loading, setLoading] = useState(false);
@@ -46,6 +58,10 @@ const Index = () => {
   const [telegramUser, setTelegramUser] = useState<TelegramUser | null>(() => {
     const storedUser = localStorage.getItem('telegramUser');
     return storedUser ? JSON.parse(storedUser) : null;
+  });
+  const [purchaseHistory, setPurchaseHistory] = useState<PurchaseHistory[]>(() => {
+    const storedHistory = localStorage.getItem('purchaseHistory');
+    return storedHistory ? JSON.parse(storedHistory) : [];
   });
   const { toast } = useToast();
 
@@ -98,6 +114,64 @@ const Index = () => {
     });
   };
 
+  const isUserOnCooldown = (username: string): boolean => {
+    if (!username) return false;
+    
+    const userHistory = purchaseHistory.find(history => history.username === username);
+    if (!userHistory) return false;
+    
+    if (userHistory.cooldownUntil && userHistory.cooldownUntil > Date.now()) {
+      return true;
+    }
+    
+    return false;
+  };
+
+  const getUserCooldownTimeRemaining = (username: string): number => {
+    if (!username) return 0;
+    
+    const userHistory = purchaseHistory.find(history => history.username === username);
+    if (!userHistory || !userHistory.cooldownUntil) return 0;
+    
+    const remainingTime = Math.max(0, userHistory.cooldownUntil - Date.now());
+    return remainingTime;
+  };
+
+  const updatePurchaseHistory = (username: string, courseId: number) => {
+    const now = Date.now();
+    const updatedHistory = [...purchaseHistory];
+    
+    let userHistory = updatedHistory.find(history => history.username === username);
+    
+    if (!userHistory) {
+      userHistory = {
+        username,
+        purchases: []
+      };
+      updatedHistory.push(userHistory);
+    }
+    
+    userHistory.purchases.push({
+      timestamp: now,
+      courseId
+    });
+    
+    const recentPurchases = userHistory.purchases.filter(
+      purchase => purchase.timestamp > now - TIME_WINDOW_MS
+    );
+    
+    userHistory.purchases = recentPurchases;
+    
+    if (recentPurchases.length > MAX_PURCHASES) {
+      userHistory.cooldownUntil = now + COOLDOWN_MS;
+    }
+    
+    setPurchaseHistory(updatedHistory);
+    localStorage.setItem('purchaseHistory', JSON.stringify(updatedHistory));
+    
+    return userHistory.cooldownUntil;
+  };
+
   const handlePurchase = async (courseId: number) => {
     if (purchaseLoading !== null) return;
     
@@ -108,6 +182,21 @@ const Index = () => {
         toast({
           title: "Username Required",
           description: "Please enter your Telegram username before purchasing a course.",
+          variant: "destructive",
+        });
+        setPurchaseLoading(null);
+        return;
+      }
+      
+      const username = telegramUser.username;
+      
+      if (isUserOnCooldown(username)) {
+        const remainingTime = getUserCooldownTimeRemaining(username);
+        const minutes = Math.ceil(remainingTime / (60 * 1000));
+        
+        toast({
+          title: "Purchase Limit Reached",
+          description: `You've reached the maximum number of purchases. Please try again in ${minutes} minutes.`,
           variant: "destructive",
         });
         setPurchaseLoading(null);
@@ -127,7 +216,7 @@ const Index = () => {
         courseTitle: course.title,
         orderDate: new Date().toLocaleString(),
         status: 'pending',
-        telegramUsername: telegramUser.username
+        telegramUsername: username
       };
       
       const existingOrders = JSON.parse(localStorage.getItem('orders') || '[]');
@@ -143,6 +232,17 @@ const Index = () => {
         setOrders(existingOrders => [...existingOrders, newOrder]);
       }
       
+      const cooldownUntil = updatePurchaseHistory(username, courseId);
+      
+      if (cooldownUntil) {
+        const cooldownMinutes = Math.ceil((cooldownUntil - Date.now()) / (60 * 1000));
+        toast({
+          title: "Purchase Limit Reached",
+          description: `You've reached the maximum number of purchases (${MAX_PURCHASES}). A cooldown of ${cooldownMinutes} minutes has been applied.`,
+          variant: "destructive",
+        });
+      }
+      
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
       const channelId = '@udemmmmp';
       
@@ -153,7 +253,7 @@ const Index = () => {
 🆔 *Order ID:* ${orderId}
 💰 *Price:* 299 ETB
 ⏰ *Order Time:* ${new Date().toLocaleString()}
-👤 *Telegram:* @${telegramUser.username}
+👤 *Telegram:* @${username}
 
 Order is waiting for processing. Course will be sent directly to the customer.
 `;
@@ -250,7 +350,6 @@ Order is waiting for processing. Course will be sent directly to the customer.
       const botToken = '7854582992:AAFpvQ1yzCi6PswUnI7dzzJtn0Ik07hY6K4';
       const channelId = '@udemmmmp';
       
-      // Send notification to the channel about completing the order
       const channelMessage = `
 📬 *COURSE DELIVERED*
 
@@ -268,10 +367,8 @@ Please forward this message to @${order.telegramUsername}:
 🔗 *Download Link:* ${courseLink}
 
 ${customMessage ? `📝 *Message:* ${customMessage}` : ''}
-
-Thank you for your purchase!
 `;
-      
+
       const encodedChannelMessage = encodeURIComponent(channelMessage);
       const channelUrl = `https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${channelId}&text=${encodedChannelMessage}&parse_mode=Markdown`;
       
@@ -354,6 +451,26 @@ Thank you for your purchase!
     setCourses(ALL_COURSES);
   }, []);
 
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      const updatedHistory = purchaseHistory.map(userHistory => {
+        if (userHistory.cooldownUntil && userHistory.cooldownUntil < now) {
+          const { cooldownUntil, ...rest } = userHistory;
+          return { ...rest };
+        }
+        return userHistory;
+      });
+      
+      if (JSON.stringify(updatedHistory) !== JSON.stringify(purchaseHistory)) {
+        setPurchaseHistory(updatedHistory);
+        localStorage.setItem('purchaseHistory', JSON.stringify(updatedHistory));
+      }
+    }, 60000);
+    
+    return () => clearInterval(cleanupInterval);
+  }, [purchaseHistory]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -373,6 +490,11 @@ Thank you for your purchase!
                 <p className="font-medium">
                   Welcome, @{telegramUser.username}!
                 </p>
+                {isUserOnCooldown(telegramUser.username) && (
+                  <p className="text-sm text-red-500">
+                    Purchase limit reached. Cooldown: {Math.ceil(getUserCooldownTimeRemaining(telegramUser.username) / (60 * 1000))} minutes
+                  </p>
+                )}
               </div>
               <Button 
                 variant="outline" 
@@ -453,6 +575,16 @@ Thank you for your purchase!
                 </div>
               )}
             </div>
+            
+            {isUserOnCooldown(telegramUser?.username || '') && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <h3 className="text-lg font-medium text-red-800">Purchase Limit Reached</h3>
+                <p className="text-red-700">
+                  You've reached the maximum number of purchases ({MAX_PURCHASES}) within the time limit. 
+                  Please try again in {Math.ceil(getUserCooldownTimeRemaining(telegramUser?.username || '') / (60 * 1000))} minutes.
+                </p>
+              </div>
+            )}
             
             {hasPurchased && (
               <div className="mt-8 p-4 bg-green-50 border border-green-200 rounded-lg">

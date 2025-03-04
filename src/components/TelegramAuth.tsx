@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useToast } from '@/hooks/use-toast';
 
 interface TelegramUsernameProps {
   onSubmit: (username: string) => void;
@@ -30,6 +31,7 @@ const TelegramUsernameInput: React.FC<TelegramUsernameProps> = ({ onSubmit }) =>
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Try to get username from Telegram WebApp
@@ -37,9 +39,20 @@ const TelegramUsernameInput: React.FC<TelegramUsernameProps> = ({ onSubmit }) =>
       if (window.Telegram?.WebApp?.initDataUnsafe?.user?.username) {
         const telegramUsername = window.Telegram.WebApp.initDataUnsafe.user.username;
         console.log('Got Telegram username automatically:', telegramUsername);
-        onSubmit(telegramUsername);
-        setLoading(false);
-        return;
+        
+        // Validate the automatically retrieved username
+        if (validateTelegramUsername(telegramUsername)) {
+          onSubmit(telegramUsername);
+          setLoading(false);
+          return;
+        } else {
+          console.error('Automatically retrieved Telegram username is invalid');
+          toast({
+            title: "Invalid Username",
+            description: "Your Telegram username is invalid. Please enter a valid username.",
+            variant: "destructive",
+          });
+        }
       }
       
       console.log('Could not get Telegram username automatically. Falling back to manual input.');
@@ -48,7 +61,27 @@ const TelegramUsernameInput: React.FC<TelegramUsernameProps> = ({ onSubmit }) =>
       console.error('Error accessing Telegram WebApp:', err);
       setLoading(false);
     }
-  }, [onSubmit]);
+  }, [onSubmit, toast]);
+
+  // Enhanced username validation function
+  const validateTelegramUsername = (username: string): boolean => {
+    // Remove @ if present
+    const formattedUsername = username.startsWith('@') ? username.substring(1) : username;
+    
+    // Check if username is valid according to Telegram rules:
+    // - 5-32 characters
+    // - Only contains A-Z, a-z, 0-9, and underscores
+    // - Cannot start with a number or underscore
+    // - Cannot have consecutive underscores
+    // - Cannot end with an underscore
+    
+    return (
+      formattedUsername.length >= 5 &&
+      formattedUsername.length <= 32 &&
+      /^[a-zA-Z][a-zA-Z0-9_]*[a-zA-Z0-9]$/.test(formattedUsername) &&
+      !formattedUsername.includes('__')
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,9 +98,9 @@ const TelegramUsernameInput: React.FC<TelegramUsernameProps> = ({ onSubmit }) =>
       formattedUsername = formattedUsername.substring(1);
     }
     
-    // Validate username format (letters, numbers, and underscores, 5-32 characters)
-    if (!/^[a-zA-Z0-9_]{5,32}$/.test(formattedUsername)) {
-      setError('Telegram username must be 5-32 characters and contain only letters, numbers, and underscores');
+    // Enhanced validation using the validateTelegramUsername function
+    if (!validateTelegramUsername(formattedUsername)) {
+      setError('Invalid Telegram username. Username must be 5-32 characters, start with a letter, and contain only letters, numbers, and underscores (no consecutive underscores).');
       return;
     }
     
