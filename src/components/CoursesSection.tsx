@@ -3,12 +3,15 @@ import React, { useState } from 'react';
 import SearchBar from '@/components/SearchBar';
 import CourseCard from '@/components/CourseCard';
 import LoadingCard from '@/components/LoadingCard';
+import CourseRequestForm from '@/components/CourseRequestForm';
 import { searchUdemyCourses, ALL_COURSES } from '@/utils/udemyApi';
 import { TelegramUser } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { usePurchaseManager } from '@/hooks/usePurchaseManager';
 import { useOrderManager } from '@/hooks/useOrderManager';
 import { MAX_PURCHASES } from '@/constants/config';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface CoursesSectionProps {
   telegramUser: TelegramUser | null;
@@ -20,6 +23,8 @@ const CoursesSection: React.FC<CoursesSectionProps> = ({ telegramUser, isAdmin }
   const [courses, setCourses] = useState(ALL_COURSES);
   const [purchaseLoading, setPurchaseLoading] = useState<number | null>(null);
   const [hasPurchased, setHasPurchased] = useState(() => localStorage.getItem('hasPurchased') === 'true');
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [lastSearchQuery, setLastSearchQuery] = useState('');
   const { toast } = useToast();
   const { isUserOnCooldown, getUserCooldownTimeRemaining, updatePurchaseHistory } = usePurchaseManager();
   const { addOrder } = useOrderManager();
@@ -28,6 +33,7 @@ const CoursesSection: React.FC<CoursesSectionProps> = ({ telegramUser, isAdmin }
     if (loading) return;
     
     setLoading(true);
+    setLastSearchQuery(query);
     
     try {
       const searchResults = await searchUdemyCourses(query);
@@ -37,7 +43,7 @@ const CoursesSection: React.FC<CoursesSectionProps> = ({ telegramUser, isAdmin }
       if (searchResults.length === 0 && query.trim() !== '') {
         toast({
           title: "No courses found",
-          description: "Try different keywords or check your spelling",
+          description: "Try different keywords, check your spelling, or request this course using the 'Request Course' button",
           variant: "destructive",
         });
       } else if (query.trim() !== '') {
@@ -205,9 +211,30 @@ Order is waiting for processing. Course will be sent directly to the customer.
             <p className="text-gray-500 mt-2">
               Try another search term or browse all courses
             </p>
+            {lastSearchQuery && (
+              <Button 
+                onClick={() => setShowRequestForm(true)}
+                variant="outline"
+                className="mt-4"
+              >
+                Request "{lastSearchQuery}" Course
+              </Button>
+            )}
           </div>
         )}
       </div>
+      
+      {courses.length > 0 && (
+        <div className="flex justify-center mt-6">
+          <Button 
+            onClick={() => setShowRequestForm(true)} 
+            variant="outline"
+            className="text-sm"
+          >
+            Can't find what you're looking for? Request a course
+          </Button>
+        </div>
+      )}
       
       {telegramUser && isUserOnCooldown(telegramUser.username) && (
         <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -227,6 +254,15 @@ Order is waiting for processing. Course will be sent directly to the customer.
           </p>
         </div>
       )}
+
+      <Dialog open={showRequestForm} onOpenChange={setShowRequestForm}>
+        <DialogContent className="sm:max-w-md">
+          <CourseRequestForm 
+            telegramUser={telegramUser}
+            onRequestClose={() => setShowRequestForm(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
