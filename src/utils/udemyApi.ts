@@ -634,4 +634,9 @@ export const ALL_COURSES: UdemyCourse[] = [
   },
   {
     id: 35,
-    title: "The
+    title: "The Ultimate PHP, Laravel, CSS & Sass! Build Modern Responsive Websites",
+    url: "https://www.udemy.com/course/ultimate-php-laravel-css-sass-build-modern-responsive-websites/",
+    description: "Learn PHP, Laravel, CSS, and Sass to build modern responsive websites.",
+    image_480x270: "https://img-c.udemycdn.com/course/480x270/4352768_6c1c_2.jpg"
+  }
+];
