@@ -1,14 +1,19 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Order } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 export function useOrderManager() {
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const storedOrders = localStorage.getItem('orders');
-    return storedOrders ? JSON.parse(storedOrders) : [];
-  });
+  const [orders, setOrders] = useState<Order[]>([]);
   const { toast } = useToast();
+
+  // Load orders from localStorage when component mounts
+  useEffect(() => {
+    const storedOrders = localStorage.getItem('orders');
+    if (storedOrders) {
+      setOrders(JSON.parse(storedOrders));
+    }
+  }, []);
 
   const addOrder = (newOrder: Order) => {
     const updatedOrders = [...orders, newOrder];
