@@ -1,11 +1,11 @@
 
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+import { HashRouter } from 'react-router-dom' // Using HashRouter instead of BrowserRouter for GitHub Pages
 import App from './App.tsx'
 import './index.css'
 
 createRoot(document.getElementById("root")!).render(
-  <BrowserRouter basename={import.meta.env.BASE_URL}>
+  <HashRouter>
     <App />
-  </BrowserRouter>
+  </HashRouter>
 );
