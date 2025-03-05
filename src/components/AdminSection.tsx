@@ -6,6 +6,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from '@/hooks/use-toast';
 import { ADMIN_ACCESS_CODE } from '@/constants/config';
 import { useOrderManager } from '@/hooks/useOrderManager';
+import { X } from 'lucide-react';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface AdminSectionProps {
   isAdmin: boolean;
@@ -18,8 +27,10 @@ const AdminSection: React.FC<AdminSectionProps> = ({ isAdmin, setIsAdmin, setSho
   const [courseLink, setCourseLink] = useState('');
   const [customMessage, setCustomMessage] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const { toast } = useToast();
-  const { orders, sendCourseLink } = useOrderManager();
+  const { orders, sendCourseLink, deleteOrder } = useOrderManager();
   
   const handleAdminLogin = () => {
     if (adminPassword === ADMIN_ACCESS_CODE) {
@@ -59,6 +70,19 @@ const AdminSection: React.FC<AdminSectionProps> = ({ isAdmin, setIsAdmin, setSho
       setCourseLink('');
       setCustomMessage('');
       setSelectedOrderId(null);
+    }
+  };
+
+  const handleDeleteOrder = (orderId: string) => {
+    setOrderToDelete(orderId);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (orderToDelete) {
+      deleteOrder(orderToDelete);
+      setShowDeleteDialog(false);
+      setOrderToDelete(null);
     }
   };
 
@@ -162,6 +186,7 @@ const AdminSection: React.FC<AdminSectionProps> = ({ isAdmin, setIsAdmin, setSho
                   <th className="py-2 px-4 text-left">Course</th>
                   <th className="py-2 px-4 text-left">Date</th>
                   <th className="py-2 px-4 text-left">Status</th>
+                  <th className="py-2 px-4 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -182,6 +207,16 @@ const AdminSection: React.FC<AdminSectionProps> = ({ isAdmin, setIsAdmin, setSho
                         {order.status === 'completed' ? 'Delivered' : 'Pending'}
                       </span>
                     </td>
+                    <td className="py-2 px-4">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDeleteOrder(order.id)}
+                        title="Delete Order"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -193,6 +228,25 @@ const AdminSection: React.FC<AdminSectionProps> = ({ isAdmin, setIsAdmin, setSho
           </p>
         )}
       </Card>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this order? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

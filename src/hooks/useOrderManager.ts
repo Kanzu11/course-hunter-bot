@@ -31,6 +31,20 @@ export function useOrderManager() {
     return updatedOrders;
   };
 
+  const deleteOrder = (orderId: string) => {
+    const updatedOrders = orders.filter(o => o.id !== orderId);
+    setOrders(updatedOrders);
+    localStorage.setItem('orders', JSON.stringify(updatedOrders));
+    
+    toast({
+      title: "Order Deleted",
+      description: "The order has been successfully removed.",
+      variant: "default",
+    });
+    
+    return updatedOrders;
+  };
+
   const sendCourseLink = async (orderId: string, courseLink: string, customMessage: string) => {
     if (!orderId || !courseLink.trim()) {
       toast({
@@ -123,6 +137,7 @@ ${customMessage ? `📝 *Message:* ${customMessage}` : ''}
     setOrders,
     addOrder,
     updateOrderStatus,
+    deleteOrder,
     sendCourseLink
   };
 }
