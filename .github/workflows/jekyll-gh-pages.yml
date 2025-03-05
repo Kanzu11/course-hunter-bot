@@ -1,2 +1,3 @@
+
 # This workflow is not needed for a React app. We'll keep the static.yml workflow instead.
 # If you'd like to keep this file for reference, you can, but it's not used in the deployment process.
